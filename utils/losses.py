@@ -139,3 +139,62 @@ class Cos_multiplet_loss(nn.Module):
       **self.multiplet(predicts, targets),
       'cos': distances.paired_distance(predicts, targets, metric='cos', eps=self.eps).mean()
     }
+
+class Cross_entropy_l2_embedding(nn.Module):
+  def __init__(self, model, min_squared_norm=0, l2_squared_weight=1):
+    super().__init__()
+    self.model = model
+    self.min_squared_norm = min_squared_norm
+    self.l2_squared_weight = l2_squared_weight
+
+    self.CE = nn.CrossEntropyLoss()
+
+  def forward(self, predicts, targets, **kwargs):
+    emb = self.model.all_word_embeddings()
+    squared_norms = (emb.real**2 + emb.imag**2).sum(dim=1)
+    
+    return {
+      'cross_entropy': self.CE(predicts, targets),
+      'l2': self.l2_squared_weight * torch.clamp(squared_norms-self.min_squared_norm, min=0).mean()
+    }
+
+class Sampled_softmax_cross_entropy(nn.Module):
+  """https://douglasorr.github.io/2021-10-training-objectives/3-sampled/article.html"""
+  
+  def __init__(self, model, num_sampling=100):
+    super().__init__()
+    self.num_sampling = num_sampling
+    self.model = model
+
+  def forward(self, predictions, labels):
+    """
+    preds: shape [batch_size, dim]
+    labels: shape [batch_size, dim]
+    """
+    batch_size = predictions.shape[0]
+    predictions = torch.cat([predictions.real, predictions.imag], dim=-1)
+    
+    # model = ...  # returns (batch_size x embedding_size)
+    projection = self.model.model.all_word_embeddings()  # shape (n_classes x embedding_size)
+    projection = torch.cat([projection.real, projection.imag], dim=-1)
+    
+    n_classes = projection.shape[0]
+    
+    # 2. Get target label scores, paired_inner_product(pred_emb, label_emb)
+    label_scores = (predictions * projection[labels, :]).sum(-1) + self.model.bias[labels]
+    
+    # 3. Sample shared noise & get scores
+    samples = torch.randint(high=n_classes, size=[self.num_sampling]).to(labels.device)
+    noise_scores = predictions @ projection[samples, :].T + self.model.bias[None, samples]
+    noise_scores += np.log(n_classes - 1)
+    
+    # 4. Reject samples matching target label & correct for remaining samples
+    reject_samples = labels[:, None] == samples[None, :]
+    noise_scores -= 1e6 * reject_samples
+    noise_scores -= torch.log((self.num_sampling - reject_samples.sum(-1, keepdims=True)).float())
+    
+    # 5. Apply regular softmax cross entropy
+    scores = torch.cat([label_scores[:, None], noise_scores], dim=1)
+    loss = torch.nn.functional.cross_entropy(scores, torch.zeros(batch_size, dtype=torch.long).to(scores.device))
+
+    return { 'loss': loss }
