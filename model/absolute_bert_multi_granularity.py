@@ -77,22 +77,23 @@ class Absolute_attention(nn.Module):
     return self.dropout(self.layer_norm(output))
 
 class Absolute_bert(nn.Module):
-  def __init__(self, vocab_size, dim=256, num_heads=8, hidden_dim=None, depth=8, granularity=[1,2,3,5,6,7,8,9], attention_type=Absolute_attention, dtype=torch.float):
+  def __init__(self, vocab_size, dim=256, num_heads=8, hidden_dim=None, depth=8, log_granularity=[1,2,2,3,5,5,6,6], attention_type=Absolute_attention, dtype=torch.float):
     super().__init__()
     self.vocab_size = vocab_size
     self.dim = dim
     self.num_heads = num_heads
     self.hidden_dim = hidden_dim
     self.depth = depth
-    self.granularity = granularity
+    assert len(log_granularity) == depth
+    self.log_granularity = log_granularity
 
     self.embedding = nn.Embedding(vocab_size, dim, _weight=torch.nn.init.xavier_normal_(torch.ones([vocab_size, self.dim])))
     # self.embedding = nn.Embedding(vocab_size, dim, _weight=torch.rand(vocab_size, self.dim) / np.sqrt(self.dim))
 
     self.layers = nn.ModuleList([Absolute_attention(dim=dim,
-      num_heads=dim//num_heads,
-      hidden_dim=gran
-      ) for gran in granularity])
+      num_heads=dim//(2**gran),
+      hidden_dim=2**gran
+      ) for gran in log_granularity])
     self.dtype = dtype
 
   def forward(self, input_ids, attention_mask, **kwargs):
