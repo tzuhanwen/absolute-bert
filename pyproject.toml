@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "absolute_bert"
+version = "0.1.0"
+description = "A PyTorch-based module with optional benchmarking tools"
+readme = "README.md"
+packages = [{ include = "absolute_bert" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+torch = "^2.0"
+# 如果你預期某些人會用 benchmark
+beir = { version = "^1.0.0", optional = true }
+faiss-cpu = { version = "*", optional = true }
+tqdm = { version = "*", optional = true }
+
+[tool.poetry.extras]
+benchmark = ["beir", "faiss-cpu", "tqdm"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.0"
+isort = "^5.13"
+mypy = "^1.9"
+pytest = "^8.0"
+wandb = "^0.16"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+known_first_party = ["your_module"]
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,6 @@
+# 預設：所有文字檔統一 LF
+* text eol=lf
+
+# 例外：Windows 批次檔保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
