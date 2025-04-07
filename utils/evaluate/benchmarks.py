@@ -5,7 +5,7 @@ CommonBaseBiEncodeMethod 就可以使用
 
 import os
 from abc import ABC, abstractmethod
-from tqdm import trange
+from tqdm.auto import trange
 
 import torch
 
@@ -97,6 +97,7 @@ class BeirBenchmark:
     corpus_name: scifact, trec-covid, nfcorpus
     """
     
+    self.corpus_name = corpus_name
     self.corpus, self.queries, self.qrels = load_or_download_corpus(corpus_name=corpus_name)
     self.batch_size = batch_size
     
