@@ -81,7 +81,8 @@ class CommonBaseBiEncoder:
     **kwargs
   ):
     results = []
-    for batch_start_idx in (trange if show_progress_bar else range)(0, len(texts), batch_size):
+    itr = (lambda *args: trange(*args, leave=False) if show_progress_bar else range)(0, len(texts), batch_size)
+    for batch_start_idx in itr:
       batch_end_idx = min(batch_start_idx + batch_size, len(texts))
       batch = texts[batch_start_idx:batch_end_idx]
       
@@ -122,6 +123,4 @@ class BeirBenchmark:
     #### Evaluate your model with NDCG@k, MAP@K, Recall@K and Precision@K  where k = [1,3,5,10,100,1000]
     metrics = retriever.evaluate(self.qrels, results, retriever.k_values)
 
-    flatten_metrics = {k: v for metric_type in metrics for k, v in metric_type.items()}
-    # print(flatten_metrics)
-    return flatten_metrics
+    return metrics
