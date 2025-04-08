@@ -1,6 +1,6 @@
 """
 這個 module 把 beir 的 IR benchmark 流程實作完整一點，只要實作
-CommonBaseBiEncodeMethod 就可以使用
+SemiSiameseBiEncodeMethod 就可以使用
 """
 
 import os
@@ -44,7 +44,7 @@ def load_or_download_corpus(corpus_name = 'scifact', data_dir = 'data'):
 
 
     
-class CommonBaseBiEncodeMethod(ABC):
+class SemiSiameseBiEncodeMethod(ABC):
     
   @abstractmethod
   def common_base(self, texts: list[str]):
@@ -59,9 +59,9 @@ class CommonBaseBiEncodeMethod(ABC):
     ...
 
 
-class CommonBaseBiEncoder:
+class SemiSiameseBiEncoder:
 
-  def __init__(self, bi_encode_method: CommonBaseBiEncodeMethod, using_corpus_part='text'):
+  def __init__(self, bi_encode_method: SemiSiameseBiEncodeMethod, using_corpus_part='text'):
     self.bi_encode_method = bi_encode_method
     self.using_corpus_part = using_corpus_part
 
@@ -105,7 +105,7 @@ class BeirBenchmark:
   
   def run(
     self, 
-    bi_encode_method: CommonBaseBiEncodeMethod, 
+    bi_encode_method: SemiSiameseBiEncodeMethod, 
     score_fn = "cos_sim",
     using_corpus_part = "text",
     k_values: list[int] = [1, 3, 5, 10, 100, 1000],
@@ -114,13 +114,20 @@ class BeirBenchmark:
     """
     score_fn: "dot", "cos_sim"
     """
-    bi_encoder = CommonBaseBiEncoder(bi_encode_method, using_corpus_part=using_corpus_part)
+    bi_encoder = SemiSiameseBiEncoder(bi_encode_method, using_corpus_part=using_corpus_part)
     model = DRES(bi_encoder, batch_size=self.batch_size, corpus_chunk_size=corpus_chunk_size)
 
     retriever = EvaluateRetrieval(model, score_function=score_fn, k_values=k_values) # or "dot" for dot product
     results = retriever.retrieve(self.corpus, self.queries)
 
     #### Evaluate your model with NDCG@k, MAP@K, Recall@K and Precision@K  where k = [1,3,5,10,100,1000]
-    metrics = retriever.evaluate(self.qrels, results, retriever.k_values)
+    metric_tuple = retriever.evaluate(self.qrels, results, retriever.k_values)
 
-    return metrics
+    return metric_tuple_to_dict(metrics)
+
+def metric_tuple_to_dict(metric_tuple):
+  metric_dict = dict(zip(['NDCG', 'MAP', 'Recall', 'P'], metric_tuple))
+  return {
+    metric_name: {k.strip(f'{metric_name}@'): v for k, v in dict_.items()} 
+    for metric_name, dict_ in metric_dict.items()
+  }

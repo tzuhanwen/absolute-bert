@@ -1,8 +1,8 @@
 import torch
 from typing import Callable, Any
-from .benchmarks import CommonBaseBiEncodeMethod
+from .benchmarks import SemiSiameseBiEncodeMethod
 
-class BERTLikeSymmetricBiEncodeMethod(CommonBaseBiEncodeMethod):
+class BERTLikeSiameseSimplePoolBiEncodeMethod(SemiSiameseBiEncodeMethod):
   
   aggregate_method_dict = {
     'mean': lambda x: torch.mean(x, dim=-2),
