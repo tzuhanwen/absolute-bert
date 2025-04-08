@@ -148,7 +148,7 @@ run = wandb.init(entity = "ghuang-nlp",
   group = config.scheduler,
   tags = [config.job_type, config.scheduler],
   config = OmegaConf.to_container(config, resolve=True),
-  mode = 'disabled' if dry_test else 'online',
+  # mode = 'disabled' if dry_test else 'online',
   save_code = True)
 
 """if not cfg.testing:  # save_before_train
