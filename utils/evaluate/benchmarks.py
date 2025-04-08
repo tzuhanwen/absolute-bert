@@ -123,7 +123,7 @@ class BeirBenchmark:
     #### Evaluate your model with NDCG@k, MAP@K, Recall@K and Precision@K  where k = [1,3,5,10,100,1000]
     metric_tuple = retriever.evaluate(self.qrels, results, retriever.k_values)
 
-    return metric_tuple_to_dict(metrics)
+    return metric_tuple_to_dict(metric_tuple)
 
 def metric_tuple_to_dict(metric_tuple):
   metric_dict = dict(zip(['NDCG', 'MAP', 'Recall', 'P'], metric_tuple))
