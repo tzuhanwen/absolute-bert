@@ -132,7 +132,7 @@ logging.basicConfig(
     level = logging.INFO,
     format = "[%(levelname)s][%(name)s] %(message)s"
 )
-
+logging.getLogger("beir").setLevel(logging.WARNING)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -237,30 +237,29 @@ def get_beir_log_dict(metric_dict, method_name):
     {f"highlight-{benchmark.corpus_name}-{method_name}/{k}": v['10']
       for k, v in metric_dict.items()}
 
+
 averager = MultiLossAverager()
 global_step = 0
+
+def wandb_non_commit_log(to_commit):
+  wandb.log(to_commit, step=global_step, commit=False)
 
 model.eval()
 
 with log_step(step=global_step, tag="global_step 0"):
-  wandb.log(
-    get_beir_log_dict(benchmark.run(model_output_method), 'model_output'),
-    step = global_step
+  wandb_non_commit_log(
+    get_beir_log_dict(benchmark.run(model_output_method), 'model_output')
   )
-  wandb.log(
-    get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings'),
-    step = global_step
+  wandb_non_commit_log(
+    get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings')
   )
-  wandb.log(extract_param_stats(
+  wandb_non_commit_log(extract_param_stats(
       [
         model.base_model.layers[0].layer_norm,
         model.base_model.layers[-1].layer_norm,
       ],
       model
-    ),
-    step = global_step
-  )
-
+  ))
 
 for epoch_num in range(config.epochs):
 
@@ -291,49 +290,48 @@ for epoch_num in range(config.epochs):
     scheduler.step()
 
     if global_step % config.log_intervals.val == 0:
-      model.eval()
-
-      with torch.no_grad():
-        val_bar = tqdm(val_loader, leave=False)
-        for batch in val_bar:
-          batch = {key: batch[key].to(device) for key in batch}
-          predicts, targets = model(**batch)
-          loss = loss_fn(predicts, targets)
-          _, loss_dict = format_losses(loss, clip_value=config.clip_loss)
-
-          batch_size = batch["labels"].size(0)
-          averager.update(loss_dict, batch_size)
-
-          val_bar.set_postfix(loss_dict)
-
-      avg_losses = averager.compute()
       with log_step(step=global_step, tag="val"):
-        wandb.log({f"val/{k}": v for k, v in avg_losses.items()}, step=global_step)
-      averager.reset()
+        model.eval()
+
+        with torch.no_grad():
+          val_bar = tqdm(val_loader, leave=False)
+          for batch in val_bar:
+            batch = {key: batch[key].to(device) for key in batch}
+            predicts, targets = model(**batch)
+            loss = loss_fn(predicts, targets)
+            _, loss_dict = format_losses(loss, clip_value=config.clip_loss)
+
+            batch_size = batch["labels"].size(0)
+            averager.update(loss_dict, batch_size)
+
+            val_bar.set_postfix(loss_dict)
+
+        avg_losses = averager.compute()
+        wandb_non_commit_log({f"val/{k}": v for k, v in avg_losses.items()})
+        averager.reset()
 
     if global_step % config.log_intervals.params == 0:
-      model.eval()
       with log_step(step=global_step, tag="params"):
-        wandb.log(extract_param_stats(
+        model.eval()
+      
+        wandb_non_commit_log(extract_param_stats(
           [
             model.base_model.layers[0].layer_norm,
             model.base_model.layers[-1].layer_norm,
           ],
-          model
+          model,
         ))
 
     if global_step % config.log_intervals.IR == 0:
-      model.eval()
       with log_step(step=global_step, tag="beir"):
-        wandb.log(
-          get_beir_log_dict(benchmark.run(model_output_method), 'model_output'),
-          step=global_step
+        model.eval()
+      
+        wandb_non_commit_log(
+          get_beir_log_dict(benchmark.run(model_output_method), 'model_output')
         )
-        wandb.log(
-          get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings'),
-          step=global_step
+        wandb_non_commit_log(
+          get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings')
         )
-
 
     # del batch, loss
 
@@ -344,11 +342,13 @@ for epoch_num in range(config.epochs):
   with log_step(step=global_step, tag="epoch end"):
     wandb.log(
       get_beir_log_dict(benchmark.run(model_output_method), 'model_output') | {'epoch': epoch_num},
-      step=global_step
+      step = global_step, 
+      commit = False
     )
     wandb.log(
       get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings') | {'epoch': epoch_num},
-      step=global_step
+      step = global_step,
+      commit = False
     )
 
 # model_artifact = wandb.Artifact(name="model",
