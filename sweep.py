@@ -236,6 +236,8 @@ def get_beir_log_dict(metric_dict, method_name):
       for k, v in metric_dict.items()}
 
 param_logger = ParamLogger(model, config.param_logging, "params")
+logging_keys = list(param_logger.extract_stats().keys())
+logging.info(repr(logging_keys))
 averager = MultiLossAverager()
 global_step = 0
 
