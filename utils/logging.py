@@ -45,32 +45,33 @@ class ParamLogger:
     """
 
     def __init__(self, model: Module, config_rules: List[Dict], prefix: str = "params"):
-        self.model = model
-        self.prefix = prefix
-        self.named_modules = dict(model.named_modules())
-        self.named_parameters = dict(model.named_parameters())
-        self.config_rules = config_rules
-        self.resolved_logging_name_type_pairs = {}
+      self.model = model
+      self.prefix = prefix
+      self.named_modules = dict(model.named_modules())
+      self.named_parameters = dict(model.named_parameters())
+      self.config_rules = config_rules
+      self.resolved_logging_name_type_pairs = {}
 
-        for rule in config_rules:
-            include = [self._resolve_suffix_index(r, self.named_modules) for r in rule.get("include", ["*"])]
-            exclude = [self._resolve_suffix_index(r, self.named_modules) for r in rule.get("exclude", [])]
-            log_distribution = rule.get("log_distribution", True)
-            log_norm = rule.get("log_norm", True)
+      module_keys = list(self.named_modules.keys())
+      for rule in config_rules:
+        include = [self._resolve_suffix_index(r, module_keys) for r in rule.get("include", ["*"])]
+        exclude = [self._resolve_suffix_index(r, module_keys) for r in rule.get("exclude", [])]
+        log_distribution = rule.get("log_distribution", True)
+        log_norm = rule.get("log_norm", True)
+        print("include", include)
+        print("exclude", exclude)
+        for name, param in self.named_parameters.items():
+          if param.numel() == 0:
+            continue
+          if not self._match_name(name, include):
+            continue
+          if self._match_name(name, exclude):
+            continue
 
-            for name, param in self.named_parameters.items():
-
-                if param in visited_params or param.numel() == 0:
-                    continue
-                if not self._match_name(name, include):
-                    continue
-                if self._match_name(name, exclude):
-                    continue
-
-                if log_distribution:
-                    self.resolved_logging_name_type_pairs[(name, "dist")] = param
-                if log_norm:
-                    self.resolved_logging_name_type_pairs[(name, "norm")] = param
+          if log_distribution:
+            self.resolved_logging_name_type_pairs[(name, "dist")] = param
+          if log_norm:
+            self.resolved_logging_name_type_pairs[(name, "norm")] = param
 
 
     def _match_name(self, name: str, patterns: List[str]) -> bool:
@@ -107,7 +108,7 @@ class ParamLogger:
             more_suffix = module_index_re.group(2)
             if not more_suffix:
                 if module_index is not None:
-                module_indices.add(module_index)
+                  module_indices.add(module_index)
             else:
                 suffixes.add(more_suffix)
 
@@ -115,7 +116,7 @@ class ParamLogger:
 
         if suffix:
             try:
-                suffix = resolve_suffix_index(suffix, suffixes, recursive_root=False)
+                suffix = self._resolve_suffix_index(suffix, suffixes, recursive_root=False)
 
             except IndexError as e:
                 if recursive_root:
