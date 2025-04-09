@@ -126,7 +126,7 @@ import absolute_bert.mlm_losses as losses
 import torch.nn as nn
 from utils.evaluate import BeirBenchmark, BI_ENCODER_METHODS
 from utils.train import format_losses, MultiLossAverager
-from utils.logging import extract_param_stats, log_step
+from utils.logging import log_step, ParamLogger
 
 logging.basicConfig(
     level = logging.INFO,
@@ -150,7 +150,6 @@ run = wandb.init(entity = "ghuang-nlp",
   group = config.scheduler,
   tags = [config.job_type, config.scheduler],
   config = OmegaConf.to_container(config, resolve=True),
-  # mode = 'disabled' if dry_test else 'online',
   save_code = True)
 
 """if not cfg.testing:  # save_before_train
@@ -162,7 +161,6 @@ run = wandb.init(entity = "ghuang-nlp",
 artifact = run.use_artifact('ghuang-nlp/uncategorized/wikipedia.en-0.01:v0', type='dataset')
 artifact_dir = artifact.download()
 datadict = load_from_disk(artifact_dir)
-print(datadict)
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=config.masking_probability)
@@ -171,7 +169,7 @@ val_loader = DataLoader(datadict['test'], batch_size=config.batch_sizes.val, col
 
 model = abs_bert.Absolute_bert_for_masked_LM(tokenizer.vocab_size, **config.model).to(device)
 loss_fn = losses.Cross_entropy(model)
-print(model)
+logging.info(repr(model))
 
 no_decay = ["bias", "LayerNorm.weight"]
 optimizer_grouped_parameters = [
@@ -237,7 +235,7 @@ def get_beir_log_dict(metric_dict, method_name):
     {f"highlight-{benchmark.corpus_name}-{method_name}/{k}": v['10']
       for k, v in metric_dict.items()}
 
-
+param_logger = ParamLogger(model, config.param_logging, "params")
 averager = MultiLossAverager()
 global_step = 0
 
@@ -253,13 +251,9 @@ with log_step(step=global_step, tag="global_step 0"):
   wandb_non_commit_log(
     get_beir_log_dict(benchmark.run(static_embeddings_method), 'static_embeddings')
   )
-  wandb_non_commit_log(extract_param_stats(
-      [
-        model.base_model.layers[0].layer_norm,
-        model.base_model.layers[-1].layer_norm,
-      ],
-      model
-  ))
+  wandb_non_commit_log(
+    param_logger.extract_stats()
+  )
 
 for epoch_num in range(config.epochs):
 
@@ -314,13 +308,9 @@ for epoch_num in range(config.epochs):
       with log_step(step=global_step, tag="params"):
         model.eval()
       
-        wandb_non_commit_log(extract_param_stats(
-          [
-            model.base_model.layers[0].layer_norm,
-            model.base_model.layers[-1].layer_norm,
-          ],
-          model,
-        ))
+        wandb_non_commit_log(
+          param_logger.extract_stats()
+        )
 
     if global_step % config.log_intervals.IR == 0:
       with log_step(step=global_step, tag="beir"):
