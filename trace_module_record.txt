@@ -1,0 +1,51 @@
+📄 absolute_bert/absolute_bert.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_add_and_LN.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_double_sigmoid.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_fix_negative.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_fix_negative_layer_norm.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_kTemperature.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_multi_granularity.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_outputAct.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_sigmoid.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_sum.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_whole.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/absolute_bert_whole_expBias.py
+  [ADD] 2024-07-09 (549efc5)
+  [RENAME] 2025-04-04 (e61d1a8)
+
+📄 absolute_bert/mlm_losses.py
+  [ADD] 2025-04-04 (e61d1a8)
+
