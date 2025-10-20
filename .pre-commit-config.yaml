@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-model-registry
+        name: Check model registry consistency
+        entry: python tools/check_staged_model_registered.py
+        language: python
+        pass_filenames: false
+
+  - repo: ../relic  # 可以用相對路徑模擬 clone repo
+    rev: HEAD
+    hooks:
+      - id: relic-check
+
+  - repo: local
+    hooks:
+      - id: debug-relic
+        name: debug hook from neighbor
+        entry: python -m ..relic.debug_pre_commit
+        language: python
+        types: [python]

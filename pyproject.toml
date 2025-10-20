@@ -22,6 +22,12 @@ isort = "^5.13"
 mypy = "^1.9"
 pytest = "^8.0"
 wandb = "^0.16"
+pre-commit = "^4.2.0"
+toml = "^0.10.2"
+relic = {path = "../relic/worktree/v0.5.0-dev", extras = ["cli"], develop = true}
+
+[tool.poetry.scripts]
+relic = "relic_cli.entrypoint:main"
 
 [tool.black]
 line-length = 88
@@ -36,6 +42,13 @@ line_length = 88
 python_version = "3.9"
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[tool.relic]
+zones = ["absolute_bert/model", "absolute_bert/model/rotator"]
+# zones = ["absolute_bert/model", ".", "absolute_bert/model/rotator"]
+default_station = "model_registry"
+# default_depth = 0
+debug = false
 
 [build-system]
 requires = ["poetry-core"]
