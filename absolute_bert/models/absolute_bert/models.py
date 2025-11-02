@@ -1,0 +1,174 @@
+import numpy as np
+import torch
+import torch.nn as nn
+from jaxtyping import Float, Int
+from torch import Tensor
+
+from .config import (
+    AbsoluteAttentionConfig,
+    AbsoluteBertConfig,
+    AbsoluteBertLayerConfig,
+    ActivationLayerConfig,
+)
+from ...base_types import ModelForMaskedLM, WordEmbeddings, WordBiases, States, Hiddens
+
+
+class AbsoluteAttention(nn.Module):
+    def __init__(self, config: AbsoluteAttentionConfig) -> None:
+        super().__init__()
+
+        self.config = config
+        self.dim = config.dim
+        self.hidden_dim = config.hidden_dim
+        self.num_heads = config.num_heads
+
+        # self.time_embedding = time_embedding
+        self.time_angle: Float[Tensor, "H Dt"] = nn.Parameter(
+            torch.rand(config.num_heads, config.time_dim)
+        )
+        self.head_time_delta: Float[Tensor, "H"] = nn.Parameter(torch.rand(self.num_heads))
+
+        self.Q = nn.Linear(config.dim, config.num_heads * config.hidden_dim, bias=False)
+        self.K = nn.Linear(config.dim, config.num_heads * config.hidden_dim)
+        self.V = nn.Linear(config.dim, config.num_heads * config.hidden_dim)
+        self.O = nn.Linear(config.num_heads * config.hidden_dim, config.dim)
+
+        self.q_bias: Float[Tensor, "H_Dh"] = nn.Parameter(
+            torch.zeros(config.num_heads * config.hidden_dim)
+        )
+        self.k_temperature = config.k_temperature
+
+        with torch.no_grad():
+            self.V.bias.copy_(torch.zeros_like(self.V.bias))
+            self.O.bias.copy_(torch.zeros_like(self.O.bias))
+
+        self.dropout = nn.Dropout(p=0.5)
+        self.layer_norm = nn.LayerNorm(config.dim)
+
+    def forward(self, tensor: States, attention_mask: Int[Tensor, "B T"]) -> States:
+        batch_length = tensor.shape[:2]
+
+        q_flat: Float[Tensor, "B T H_Dh"] = self.Q(tensor) - self.q_bias.exp()
+        q: Hiddens = q_flat.view(*batch_length, self.num_heads, self.hidden_dim)
+        # q = (q + attention_mask[..., None, None])
+        q = (q.sigmoid() / self.hidden_dim) * attention_mask[..., None, None]
+
+        time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], True)
+        q_timed: Float[Tensor, "B T H 2*Dt"] = q.sum(-1, keepdim=True) * time
+
+        k_time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], False)
+        q_attentioned: Float[Tensor, "B T T H"] = torch.einsum("bthd,lhd->btlh", q_timed, k_time)
+
+        k_flat: Float[Tensor, "B T H_Dh"] = self.K(tensor)
+        k: Hiddens = k_flat.view(*batch_length, self.num_heads, self.hidden_dim)
+        k_masked = (k / self.k_temperature) * attention_mask[..., None, None]
+        k_softmax: Hiddens = k_masked.softmax(dim=-1)
+
+        v_flat: Float[Tensor, "B T H_Dh"] = self.V(tensor)
+        v: Hiddens = v_flat.view(*batch_length, self.num_heads, self.hidden_dim)
+
+        kv: Hiddens = k_softmax * v
+        loading: Hiddens = torch.einsum("btlh,blhd->bthd", q_attentioned, kv)
+        loading_flat: Float[Tensor, "B T H_Dh"] = loading.reshape(*batch_length, self.dim)
+
+        attention_output: States = self.O(loading_flat)
+        intermediate: States = self.layer_norm(tensor + self.dropout(attention_output))
+
+        return intermediate
+
+    def _get_time(self, length: int, with_time_delta: bool) -> Float[Tensor, "T H 2*Dt"]:
+        word_positions: Int[Tensor, "T"] = torch.arange(length).to(self.head_time_delta.device)
+
+        time_delta: Float[Tensor, "T 1 1"] = word_positions[:, None, None]
+        if with_time_delta:
+            time_delta += self.head_time_delta[None, :, None]  # "T H 1"
+
+        time_angles: Float[Tensor, "T H Dt"] = time_delta * self.time_angle
+
+        cosines, sines = time_angles.cos(), time_angles.sin()
+        time: Float[Tensor, "T H 2*Dt"] = torch.cat(
+            [cosines + sines, cosines - sines], dim=-1
+        ) / np.sqrt(self.hidden_dim)
+
+        return time
+
+
+class ActivationLayer(nn.Module):
+    def __init__(self, config: ActivationLayerConfig) -> None:
+        super().__init__()
+        self.config = config
+
+        self.linear_in = nn.Linear(config.dim, config.hidden_dim)
+        self.act_fn = nn.GELU(approximate="tanh")
+        self.linear_out = nn.Linear(config.hidden_dim, config.dim)
+        self.layer_norm_lin = nn.LayerNorm(config.dim)
+
+        self.dropout = nn.Dropout(p=0.5)
+
+    def forward(self, tensor: States) -> States:
+        activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(tensor))
+        lin_output: States = self.dropout(self.linear_out(activated))
+
+        return self.layer_norm_lin(tensor + lin_output)
+
+
+class AbsoluteBertLayer(nn.Module):
+    def __init__(
+        self,
+        config: AbsoluteBertLayerConfig,
+    ) -> None:
+        self.attention = AbsoluteAttention(config.get_attention_config())
+        self.activation = ActivationLayer(config.get_activation_config())
+
+    def forward(self, tensor: States) -> States:
+        return self.activation(self.attention(tensor))
+
+
+class AbsoluteBert(nn.Module):
+    def __init__(
+        self,
+        config: AbsoluteBertConfig,
+    ) -> None:
+        super().__init__()
+        self.config = config
+
+        weight = torch.nn.init.xavier_normal_(torch.ones([config.vocab_size, config.dim]))
+        self.embedding = nn.Embedding(config.vocab_size, config.dim, _weight=weight)
+        # self.embedding = nn.Embedding(
+        #     config.vocab_size,
+        #     config.dim,
+        #     _weight=torch.rand(config.vocab_size, config.dim) / np.sqrt(config.dim)
+        # )
+
+        self.layers = nn.ModuleList(
+            [AbsoluteBertLayer(layer_config) for layer_config in config.iter_layer_configs()]
+        )
+
+    def forward(self, input_ids: Int[Tensor, "B T"], attention_mask: Int[Tensor, "B T"], **kwargs):
+        # extended_attention_mask = attention_mask.to(dtype=self.dtype)  # fp16 compatibility
+        # extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(self.dtype).min
+
+        tensor = self.embedding(input_ids)
+
+        for layer in self.layers:
+            tensor = layer(tensor, attention_mask)
+
+        return tensor
+
+
+class AbsoluteBertForMaskedLM(nn.Module, ModelForMaskedLM):
+    def __init__(self, config: AbsoluteBertConfig) -> None:
+        super().__init__()
+        self.base_model = AbsoluteBert(config)
+        self.bias = nn.Parameter(torch.zeros(config.vocab_size))
+
+    def forward(self, input_ids, attention_mask, labels=None, **kwargs):
+        tensor = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+
+        return tensor, labels
+
+    def word_embeddings(self) -> WordEmbeddings:
+        return self.base_model.embedding.weight.detach()
+
+    def word_biases(self) -> WordBiases:
+        return self.bias.detach()

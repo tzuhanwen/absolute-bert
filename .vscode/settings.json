@@ -1,0 +1,38 @@
+{
+  "python.languageServer": "None",
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "python.analysis.exclude": [
+    "**/site-packages/transformers",
+    "**/site-packages/datasets",
+    "**/site-packages/tokenizers",
+    "**/site-packages/torch"
+  ],
+  "github.copilot.enable": {
+    "*": false
+  },
+  "files.watcherExclude": {
+    "**/data/**": true,
+    "**/outputs/**": true,
+    "**/checkpoints/**": true,
+    "**/wandb/**": true
+  },
+  "search.exclude": {
+    "**/data": true,
+    "**/outputs": true,
+    "**/checkpoints": true,
+    "**/wandb": true
+  },
+  "basedpyright.analysis.typeCheckingMode": "basic",
+  "basedpyright.analysis.inlayHints.variableTypes": false,
+  "basedpyright.analysis.inlayHints.callArgumentNames": false,
+  "basedpyright.analysis.inlayHints.callArgumentNamesMatching": false,
+  // "basedpyright.analysis.inlayHints.functionReturnTypes": true,
+  "basedpyright.analysis.diagnosticSeverityOverrides": {
+    "reportMissingTypeStubs": "none",
+    "reportMissingParameterType": "none",
+    "reportMissingTypeArgument": "none",
+    "reportUnknownVariableType": "none",
+    "reportUnknownMemberType": "none",
+    "reportMissingTypeAnnotation": "none"
+  }
+}
