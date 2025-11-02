@@ -1,0 +1,342 @@
+# -*- coding: utf-8 -*-
+"""
+Original file is located at
+    https://colab.research.google.com/drive/1dhxLkfDR1ImlPXUyZ54JZply_HBvq64V
+"""
+
+# # comment when exporting .py
+# def is_colab():
+#     try:
+#         import google.colab
+#         return True
+#     except ImportError:
+#         return False
+
+# if is_colab():
+#   !git clone https://github.com/adam840502/absolute-bert.git
+#   import sys
+#   sys.path.append('absolute-bert')
+#   %cd absolute-bert/
+#   !git fetch
+#   !git checkout infra/wandb-logging
+#   !pip install --quiet numpy pandas tqdm nltk beir omegaconf datasets wandb faiss-cpu
+
+# # comment when exporting .py
+# !mkdir -p configs
+
+# {
+#   'tokenizer_type': tokenizer_type,
+#   'model': str(model),
+#   'model_params': str(model_params),
+
+
+#   # 'loss_type': str(using_loss),
+#   'loss_params': loss_params,
+# }
+
+# # comment when exporting .py
+# %%writefile configs/default.yaml
+# job_type: train
+# epochs: 1
+# masking_probability: 0.15
+# max_length: 256
+# random_seed: 42
+# validation_portion: 0.9
+# sampling_word_size: 100  # 用在 sampled softmax loss
+# lr: 1e-4
+# scheduler: cosine
+# warmup_ratio: 0.1
+# max_steps: -1
+# clip_loss: 50
+
+# model:
+#   depth: 12
+#   num_heads: 12
+#   dim: 768
+#   k_temperature: 0.5
+#   # hidden_dim: 32
+#   # embedding_initialize_method: 'rand'
+#   # attention_type: Absolute_global_attention
+#   # time_dim: 64
+
+# batch_sizes:
+#   train: 48
+#   val: 128
+#   IR: 32
+
+# log_intervals:
+#   train: 10
+#   val: 500
+#   params: 500
+#   IR: 2000
+
+
+from .setup_env import config
+
+"""# 主程式"""
+
+from tqdm.auto import tqdm
+
+from datasets import load_from_disk
+
+import torch
+from torch.utils.data import DataLoader
+from transformers import AutoTokenizer, DataCollatorForLanguageModeling
+from omegaconf import OmegaConf
+import logging
+import wandb
+
+import absolute_bert.models.absolute_bert as abs_bert
+from absolute_bert import losses
+from transformers import get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
+import torch.nn as nn
+
+from .evaluate import BeirBenchmark, BI_ENCODER_METHODS
+from .train import format_losses, MultiLossAverager
+from .logging import log_step, ParamLogger
+
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s][%(name)s] %(message)s")
+logging.getLogger("beir").setLevel(logging.WARNING)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
+
+schedulers = {"cosine": get_cosine_schedule_with_warmup, "linear": get_linear_schedule_with_warmup}
+
+run = wandb.init(
+    entity="ghuang-nlp",
+    project="prototyping",
+    job_type=config.job_type,
+    group=config.scheduler,
+    tags=[config.job_type, config.scheduler],
+    config=OmegaConf.to_container(config, resolve=True),
+    save_code=True,
+)
+
+"""if not cfg.testing:  # save_before_train
+    temp_dir = get_saving_dir(cfg, model, for_initial=True)
+    if temp_dir:
+        trainer.save_model(temp_dir)
+"""
+
+artifact = run.use_artifact("ghuang-nlp/uncategorized/wikipedia.en-0.01:v0", type="dataset")
+artifact_dir = artifact.download()
+datadict = load_from_disk(artifact_dir)
+
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+collator = DataCollatorForLanguageModeling(
+    tokenizer=tokenizer, mlm=True, mlm_probability=config.masking_probability
+)
+train_loader = DataLoader(
+    datadict["train"], batch_size=config.batch_sizes.train, collate_fn=collator
+)
+val_loader = DataLoader(datadict["test"], batch_size=config.batch_sizes.val, collate_fn=collator)
+
+model = abs_bert.Absolute_bert_for_masked_LM(tokenizer.vocab_size, **config.model).to(device)
+loss_fn = losses.Cross_entropy(model)
+logging.info(repr(model))
+
+no_decay = ["bias", "LayerNorm.weight"]
+optimizer_grouped_parameters = [
+    {
+        "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+        "weight_decay": 0.01,
+    },
+    {
+        "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+        "weight_decay": 0.0,
+    },
+]
+optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=config.lr)
+
+scheduler = schedulers[config.scheduler](
+    optimizer,
+    num_warmup_steps=len(train_loader) * config.epochs * config.warmup_ratio,
+    num_training_steps=len(train_loader) * config.epochs,
+)
+
+
+def pure_text_token_vectors(output, inputs):
+    """special_token and padding_token will map to zero vector."""
+    mask = (inputs["attention_mask"] * (1 - inputs["special_tokens_mask"])).bool()
+    return output.masked_fill(~mask[:, :, None], 0.0)
+
+
+def tokenize_fn(texts):
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, return_special_tokens_mask=True)
+    special_tokens_mask = inputs.pop("special_tokens_mask")
+    return inputs, {"special_tokens_mask": special_tokens_mask}
+
+
+model_output_method = BI_ENCODER_METHODS["bert_like_siamese_simple_pool"](
+    model,
+    tokenize_fn=tokenize_fn,
+    output_key=0,
+    common_post_fn=pure_text_token_vectors,
+    aggregate_method="mean",
+)
+
+
+class StaticEmbeddingsWithTransform(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, **inputs):
+        return self.model.base_model.embedding(inputs["input_ids"])
+
+
+static_embeddings_method = BI_ENCODER_METHODS["bert_like_siamese_simple_pool"](
+    StaticEmbeddingsWithTransform(model).to(device),
+    tokenize_fn=tokenize_fn,
+    common_post_fn=pure_text_token_vectors,
+    aggregate_method="mean",
+)
+
+benchmark = BeirBenchmark(corpus_name="scifact", batch_size=config.batch_sizes.IR)
+
+# model_output_metrics = benchmark.run(model_output_method)
+# static_embeddings_metrics = benchmark.run(static_embeddings_method)
+
+
+def get_beir_log_dict(metric_dict, method_name):
+    return {f"{benchmark.corpus_name}-{method_name}/{k}": v for k, v in metric_dict.items()} | {
+        f"highlight-{benchmark.corpus_name}-{method_name}/{k}": v["10"]
+        for k, v in metric_dict.items()
+    }
+
+
+param_logger = ParamLogger(model, config.param_logging, "params")
+logging_keys = list(param_logger.extract_stats().keys())
+logging.info(repr(logging_keys))
+averager = MultiLossAverager()
+global_step = 0
+
+
+def wandb_non_commit_log(to_commit):
+    wandb.log(to_commit, step=global_step, commit=False)
+
+
+model.eval()
+
+with log_step(step=global_step, tag="global_step 0"):
+    wandb_non_commit_log(get_beir_log_dict(benchmark.run(model_output_method), "model_output"))
+    wandb_non_commit_log(
+        get_beir_log_dict(benchmark.run(static_embeddings_method), "static_embeddings")
+    )
+    wandb_non_commit_log(param_logger.extract_stats())
+
+for epoch_num in range(config.epochs):
+
+    bar = tqdm(train_loader)
+    for batch_num, batch in enumerate(bar):
+
+        model.train()
+        optimizer.zero_grad()
+
+        batch = {key: batch[key].to(device) for key in batch}
+        predicts, targets = model(**batch)
+
+        loss = loss_fn(predicts, targets)
+        final_loss, loss_dict = format_losses(loss, clip_value=config.clip_loss)
+
+        if global_step % config.log_intervals.train == 0:
+            wandb.log({f"train/{k}": v for k, v in loss_dict.items()}, step=global_step)
+
+        bar.set_postfix(loss_dict)
+
+        # with torch.autograd.detect_anomaly(True):
+        # loss.backward()
+        # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
+
+        final_loss.backward()
+        optimizer.step()
+        global_step += 1
+        scheduler.step()
+
+        if global_step % config.log_intervals.val == 0:
+            with log_step(step=global_step, tag="val"):
+                model.eval()
+
+                with torch.no_grad():
+                    val_bar = tqdm(val_loader, leave=False)
+                    for batch in val_bar:
+                        batch = {key: batch[key].to(device) for key in batch}
+                        predicts, targets = model(**batch)
+                        loss = loss_fn(predicts, targets)
+                        _, loss_dict = format_losses(loss, clip_value=config.clip_loss)
+
+                        batch_size = batch["labels"].size(0)
+                        averager.update(loss_dict, batch_size)
+
+                        val_bar.set_postfix(loss_dict)
+
+                avg_losses = averager.compute()
+                wandb_non_commit_log({f"val/{k}": v for k, v in avg_losses.items()})
+                averager.reset()
+
+        if global_step % config.log_intervals.params == 0:
+            with log_step(step=global_step, tag="params"):
+                model.eval()
+
+                wandb_non_commit_log(param_logger.extract_stats())
+
+        if global_step % config.log_intervals.IR == 0:
+            with log_step(step=global_step, tag="beir"):
+                model.eval()
+
+                wandb_non_commit_log(
+                    get_beir_log_dict(benchmark.run(model_output_method), "model_output")
+                )
+                wandb_non_commit_log(
+                    get_beir_log_dict(benchmark.run(static_embeddings_method), "static_embeddings")
+                )
+
+        # del batch, loss
+
+        if (config.max_steps > 0) and (global_step > config.max_steps):
+            break
+
+    model.eval()
+    with log_step(step=global_step, tag="epoch end"):
+        wandb.log(
+            get_beir_log_dict(benchmark.run(model_output_method), "model_output")
+            | {"epoch": epoch_num},
+            step=global_step,
+            commit=False,
+        )
+        wandb.log(
+            get_beir_log_dict(benchmark.run(static_embeddings_method), "static_embeddings")
+            | {"epoch": epoch_num},
+            step=global_step,
+            commit=False,
+        )
+
+# model_artifact = wandb.Artifact(name="model",
+#   type="model",
+#   # description="trained with 2-1-training_with_msmarco",
+#   metadata=training_args_config)
+# model_artifact.add_dir(saving_dir)
+# run.log_artifact(model_artifact)
+
+# run.log_code(**get_code_files_aggregating_functions(cfg.env.project_root))
+
+# if not cfg.testing:
+#     if not os.path.exists(saving_dir):
+#         os.mkdir(saving_dir)
+
+#     trainer.save_model(saving_dir)
+#     trainer.save_state()
+#     torch.save(model, saving_dir/'pytorch.pt')
+
+"""### for markdown recording"""
+
+# for polaritical_docs in zip(test_cossim_before, test_cossim_after):  # pos & neg
+#     print(f"||{'|'.join(str(idx) for idx in range(10))}|")
+#     for timepoint, values in zip(['before', 'after'], polaritical_docs):  # before & after
+#         print(f"|{timepoint}|{'|'.join(f'{val:.4f}' for val in values.tolist())}|")
+#     print()
+
+run.finish()

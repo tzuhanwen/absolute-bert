@@ -8,7 +8,9 @@ def beir_metrics_to_markdown_table(
     precision: dict[str, float],
 ) -> str:
 
-    metrics = OrderedDict({"NDCG": ndcg, "MAP": map_, "Recall": recall, "P": precision})
+    metrics: dict[str, dict[str, float]] = OrderedDict(
+        {"NDCG": ndcg, "MAP": map_, "Recall": recall, "P": precision}
+    )
 
     k_values = [key.split("@")[1] for key in ndcg.keys()]  # extract the @ values of metrics
 
@@ -18,12 +20,12 @@ def beir_metrics_to_markdown_table(
     lines = [column_name_line, column_format_line]
 
     for k in k_values:
-        metric_values = []
+        metric_values: list[str] = []
         for metric_name, metric_dict in metrics.items():
             metric_value = metric_dict[f"{metric_name}@{k}"]
             metric_values.append(f"{metric_value:.4f}")
 
-        line += f"|@{k}|" + "|".join(metric_values) + "|"
+        line = f"|@{k}|" + "|".join(metric_values) + "|"
         lines.append(line)
 
     return "\n".join(lines)
