@@ -1,0 +1,13 @@
+version_to_info:
+  '1.0': absolute_bert/model/absolute_bert.py
+  '1.1': absolute_bert/model/absolute_bert_sum.py
+  '1.2': absolute_bert/model/absolute_bert_sigmoid.py
+  1.2a: absolute_bert/model/absolute_bert_double_sigmoid.py
+  1.2b: absolute_bert/model/absolute_bert_add_and_LN.py
+  '1.3': absolute_bert/model/absolute_bert_whole.py
+  1.3a: absolute_bert/model/absolute_bert_whole_expBias.py
+  '1.4': absolute_bert/model/absolute_bert_fix_negative.py
+  1.4a: absolute_bert/model/absolute_bert_fix_negative_layer_norm.py
+  '1.5': absolute_bert/model/absolute_bert_multi_granularity.py
+  '1.6': absolute_bert/model/absolute_bert_kTemperature.py
+  1.6a: absolute_bert/model/absolute_bert_outputAct.py
