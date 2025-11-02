@@ -1,2 +1,31 @@
 version_to_info:
   '1.0': absolute_bert/models/rotator/rotator.py
+  '1.1': absolute_bert/models/rotator/rotator_with_time.py
+  '1.2': absolute_bert/models/rotator/rotator_by_accumlating.py
+  '1.3': absolute_bert/models/rotator/rotator_res_lima.py
+  '1.4': absolute_bert/models/rotator/rotator_res_lima2.py
+  '1.5': absolute_bert/models/rotator/rotator_reslima_accum_diff.py
+  '1.6': absolute_bert/models/rotator/rotator_reslima_tunable_lima_halfshape.py
+  '1.7': absolute_bert/models/rotator/rotator_multihead_reslima.py
+  '1.8': absolute_bert/models/rotator/rotator_multihead_local_coordinate.py
+  '1.9': absolute_bert/models/rotator/rotator_multireslima_rotating_history.py
+  '3.0': absolute_bert/models/rotator/rotator_lima3.py
+  '3.1': absolute_bert/models/rotator/rotator_lima3_5.py
+  '4.0': absolute_bert/models/rotator/rotator_lima4.py
+  4.1a: absolute_bert/models/rotator/rotator_lima4_noClocks.py
+  4.1a2: absolute_bert/models/rotator/rotator_lima4_noLocalCoordinating.py
+  4.1a3: absolute_bert/models/rotator/rotator_lima4_5.py
+  4.1b: absolute_bert/models/rotator/rotator_lima4_noTime.py
+  '4.2': absolute_bert/models/rotator/rotator_lima4_hippo.py
+  '4.3': absolute_bert/models/rotator/rotator_lima4_multihippo.py
+  '5.0': absolute_bert/models/rotator/rotator_lima5.py
+  '5.1': absolute_bert/models/rotator/rotator_lima5_nohippo.py
+  '5.2': absolute_bert/models/rotator/rotator_lima5_nohippo_xavier.py
+  '6.0': absolute_bert/models/rotator/rotator_lima6.py
+  '6.1': absolute_bert/models/rotator/rotator_lima6_randnInit.py
+  '7.0': absolute_bert/models/rotator/rotator_lima7.py
+  '7.1': absolute_bert/models/rotator/rotator_lima7_gru.py
+  '7.2': absolute_bert/models/rotator/rotator_lima7_gru_randInit.py
+  '7.3': absolute_bert/models/rotator/rotator_lima7_gru_mixInit.py
+  '8.0': absolute_bert/models/rotator/rotator_lima8.py
+  '8.1': absolute_bert/models/rotator/rotator_lima8_perToken.py
