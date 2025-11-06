@@ -29,7 +29,7 @@ pytest = "^8.0"
 wandb = "^0.16"
 pre-commit = "^4.2.0"
 toml = "^0.10.2"
-relic = { path = "../relic/", extras = ["cli"], develop = true }
+# relic = { path = "../relic/", extras = ["cli"], develop = true }
 
 [tool.poetry.scripts]
 relic = "relic_cli.entrypoint:main"
