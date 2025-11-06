@@ -1,5 +1,7 @@
 {
-  "python.languageServer": "None",
+  "editor.semanticHighlighting.enabled": true,
+  // "python.languageServer": "None",
+  "python.languageServer": "Pylance",
   "python.analysis.diagnosticMode": "openFilesOnly",
   "python.analysis.exclude": [
     "**/site-packages/transformers",
@@ -34,5 +36,6 @@
     "reportUnknownVariableType": "none",
     "reportUnknownMemberType": "none",
     "reportMissingTypeAnnotation": "none"
-  }
+  },
+  "basedpyright.disableLanguageServices": true,
 }

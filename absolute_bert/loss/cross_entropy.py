@@ -1,17 +1,21 @@
 import numpy as np
 import torch
-from torch import nn, Tensor
 from jaxtyping import Float
-from ..base_types import ModelForMaskedLM, States
+from torch import Tensor, nn
+from dataclasses import dataclass
+from absolute_bert.base_types import Labels, LanguageModel, States, Config
+from .loss_types import Loss, LossForLMConfig
+from .registry import LossType, loss_registry, loss_config_registry
 
 
+@loss_registry.register(LossType.CROSS_ENTROPY)
 class CrossEntropy(nn.Module):
-    def __init__(self, model: ModelForMaskedLM) -> None:
+    def __init__(self, model: LanguageModel, config: LossForLMConfig) -> None:
         super().__init__()
         self.loss = torch.nn.CrossEntropyLoss()
         self.model = model
 
-    def forward(self, outputs: States, labels):
+    def forward(self, outputs: States, labels: Labels) -> Loss:
         preds: Float[Tensor, "B T V"] = (
             outputs @ self.model.word_embeddings().T + self.model.word_biases()
         )
@@ -36,6 +40,12 @@ class CrossEntropyL2Embedding(nn.Module):
             "l2": self.l2_squared_weight
             * torch.clamp(squared_norms - self.min_squared_norm, min=0).mean(),
         }
+
+
+@loss_config_registry.register(LossType.SAMPLED_SOFTMAX_CROSS_ENTROPY)
+@dataclass
+class LossConfig(Config):
+    sampling_word_size: int = 100  # 用在 sampled softmax loss
 
 
 class SampledSoftmaxCrossEntropy(nn.Module):

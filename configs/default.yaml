@@ -1,0 +1,28 @@
+wandb:
+  entity: "ghuang-nlp"
+  project: "absolute-bert"
+  job_type: "sweep"  # "sweep", "train"
+# train:
+#   num_epochs: 1
+  max_steps: 10
+batch_sizes:
+  train: 48
+  val: 128
+  ir: 32
+# optimizer:
+# scheduler:
+# logging:
+  # params:
+    # every_n_steps: 500
+    # rules:  # default: no rules
+      # - 
+        # include: ["*"]  # default: []
+        # exclude: []
+        # log_norm: true
+        # log_distribution: true
+  # train: 
+  #   every_n_steps: 10
+  # val:
+  #   every_n_steps: 500
+  # if:
+  #   every_n_steps: 2000

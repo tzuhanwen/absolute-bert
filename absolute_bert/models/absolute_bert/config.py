@@ -2,10 +2,11 @@ from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 
 import torch
+from absolute_bert.base_types import Config
 
 
 @dataclass
-class AbsoluteAttentionConfig:
+class AbsoluteAttentionConfig(Config):
     dim: int
     num_heads: int
     hidden_dim: int
@@ -20,13 +21,13 @@ class AbsoluteAttentionConfig:
 
 
 @dataclass
-class ActivationLayerConfig:
+class ActivationLayerConfig(Config):
     dim: int
     hidden_dim: int
 
 
 @dataclass
-class AbsoluteBertLayerConfig:
+class AbsoluteBertLayerConfig(Config):
     dim: int
     num_heads: int
     hidden_dim: int
@@ -48,7 +49,7 @@ class AbsoluteBertLayerConfig:
 
 
 @dataclass
-class AbsoluteBertConfig:
+class AbsoluteBertConfig(Config):
     vocab_size: int
     dim: int = 512
     num_heads: int = 8
@@ -59,6 +60,8 @@ class AbsoluteBertConfig:
     log_granularity: Sequence[int] = (6, 6, 6, 6, 6, 6, 6, 6)
     k_temperature: float = 0.5
     dtype: torch.dtype = torch.float
+    # embedding_initialize_method: 'rand'
+    # attention_type: Absolute_global_attention
 
     def __post_init__(self) -> None:
         if len(self.log_granularity) != self.depth:

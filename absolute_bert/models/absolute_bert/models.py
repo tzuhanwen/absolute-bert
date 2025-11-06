@@ -1,16 +1,27 @@
+from dataclasses import dataclass
+
+from jaxtyping import Float, Int
 import numpy as np
 import torch
-import torch.nn as nn
-from jaxtyping import Float, Int
 from torch import Tensor
+import torch.nn as nn
 
+from ...base_types import (
+    Hiddens,
+    Labels,
+    States,
+    WordBiases,
+    WordEmbeddings,
+    EncoderInputs,
+    Encoder,
+    LanguageModel,
+)
 from .config import (
     AbsoluteAttentionConfig,
     AbsoluteBertConfig,
     AbsoluteBertLayerConfig,
     ActivationLayerConfig,
 )
-from ...base_types import ModelForMaskedLM, WordEmbeddings, WordBiases, States, Hiddens
 
 
 class AbsoluteAttention(nn.Module):
@@ -124,7 +135,7 @@ class AbsoluteBertLayer(nn.Module):
         return self.activation(self.attention(tensor))
 
 
-class AbsoluteBert(nn.Module):
+class AbsoluteBert(Encoder):
     def __init__(
         self,
         config: AbsoluteBertConfig,
@@ -144,28 +155,28 @@ class AbsoluteBert(nn.Module):
             [AbsoluteBertLayer(layer_config) for layer_config in config.iter_layer_configs()]
         )
 
-    def forward(self, input_ids: Int[Tensor, "B T"], attention_mask: Int[Tensor, "B T"], **kwargs):
+    def forward(self, inputs: EncoderInputs) -> States:
         # extended_attention_mask = attention_mask.to(dtype=self.dtype)  # fp16 compatibility
         # extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(self.dtype).min
 
-        tensor = self.embedding(input_ids)
+        tensor = self.embedding(inputs.input_ids)
 
         for layer in self.layers:
-            tensor = layer(tensor, attention_mask)
+            tensor = layer(tensor, inputs.attention_mask)
 
         return tensor
 
 
-class AbsoluteBertForMaskedLM(nn.Module, ModelForMaskedLM):
+class AbsoluteBertLM(LanguageModel):
     def __init__(self, config: AbsoluteBertConfig) -> None:
         super().__init__()
         self.base_model = AbsoluteBert(config)
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
 
-    def forward(self, input_ids, attention_mask, labels=None, **kwargs):
-        tensor = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+    def forward(self, inputs: EncoderInputs) -> tuple[States, Labels | None]:
+        tensor = self.base_model(input_ids=inputs.input_ids, attention_mask=inputs.attention_mask)
 
-        return tensor, labels
+        return tensor, inputs.labels
 
     def word_embeddings(self) -> WordEmbeddings:
         return self.base_model.embedding.weight.detach()
