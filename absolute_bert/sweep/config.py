@@ -77,6 +77,13 @@ class ExperimentConfig(Config):
     logging: LoggingConfig
 
 
+# model overrides
+#     embedding_initialize_method: 'rand'
+#     attention_type: Absolute_global_attention
+#     depth: 12
+#     num_heads: 12
+#     dim: 768
+#     k_temperature: 0.5
 
 @dataclass
 class ExperimentUnresolved(_ConfigBase):

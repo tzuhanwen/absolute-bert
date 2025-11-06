@@ -11,15 +11,22 @@ batch_sizes:
   ir: 32
 # optimizer:
 # scheduler:
-# logging:
-  # params:
-    # every_n_steps: 500
-    # rules:  # default: no rules
+logging:
+  params:
+    every_n_steps: 500
+    rules:  # default: no rules
       # - 
-        # include: ["*"]  # default: []
-        # exclude: []
-        # log_norm: true
-        # log_distribution: true
+      #   include: ["*"]  # default: []
+      #   exclude: []
+      #   log_norm: true
+      #   log_distribution: true
+      -
+        include:
+          - "base_model.layers.*.layer_norm*"
+          - "bias"
+        exclude: ["*.bias"]
+        log_distribution: true
+        log_norm: true
   # train: 
   #   every_n_steps: 10
   # val:
