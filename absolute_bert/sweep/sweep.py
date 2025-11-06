@@ -17,6 +17,7 @@ from absolute_bert.base_types import (
 from absolute_bert.bi_encoder import EncoderEmbeddingPool, EncoderOutputPool
 from absolute_bert.extractor import ModuleParamStatsExtractor
 from absolute_bert.loggers import WandbLogger
+from absolute_bert.utils import init_logging
 
 from . import setup
 from .evaluate import BeirBenchmark
@@ -24,6 +25,9 @@ from .optimizer import make_adamw
 from .scheduler import make_scheduler
 from .train import MultiLossAverager, format_losses
 from .utils import log_step
+
+if __name__ == "__main__":
+    init_logging()
 
 # logging.getLogger("beir").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -45,6 +49,7 @@ run = wandb.init(
 #         trainer.save_model(temp_dir)
 
 # %% data preparation
+logger.info("data preparation")
 
 artifact = wandb.use_artifact("ghuang-nlp/uncategorized/wikipedia.en-0.01:v0", type="dataset")
 artifact_dir = artifact.download()
@@ -60,10 +65,11 @@ train_loader = DataLoader(
 val_loader = DataLoader(datadict["test"], batch_size=config.batch_sizes.val, collate_fn=collator)
 
 # %% preparing train process
+logger.info("preparing train process")
 
 model: LanguageModel = abs_bert.AbsoluteBertLM(config).to(device)
 loss_fn = loss.CrossEntropy(model)
-logging.info(f"using model `{repr(model)}`")
+logger.info(f"using model `{repr(model)}`")
 
 
 optimizer = make_adamw(model, config=config.optimizer)
@@ -71,6 +77,8 @@ scheduler = make_scheduler(optimizer, num_batches=len(train_loader), config=conf
 averager = MultiLossAverager()
 
 # %% evaluation setup
+logger.info("evaluation setup")
+
 static_embedding_encoder = EncoderEmbeddingPool.from_model(model, tokenizer, device)
 model_output_encoder = EncoderOutputPool.from_model(model, tokenizer, device)
 benchmark = BeirBenchmark(corpus_name="scifact")
@@ -94,12 +102,11 @@ def evaluate_and_log(tag: str, epoch_num: int | None = None):
 
 
 # %% train start
+logger.info("train start")
 
 global_step = 0
 
 model.eval()
-
-
 evaluate_and_log("global_step 0")
 
 for epoch_num in range(config.train.num_epochs):
