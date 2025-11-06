@@ -1,0 +1,24 @@
+import pkgutil
+import importlib
+from pathlib import Path
+
+import logging 
+
+logger = logging.getLogger(__name__)
+logger.debug("start to auto import")
+
+_pkg = Path(__file__).parent
+logger.debug(f"{_pkg=}")
+
+
+
+for m in pkgutil.iter_modules([str(_pkg)]):
+    name = m.name
+    if name.startswith("_") or name in {"registry.py"}:
+        continue
+
+    logger.debug(f"importing `{name}`")
+
+    importlib.import_module(f"{__package__}.{name}")
+
+logger.debug("end of auto import")

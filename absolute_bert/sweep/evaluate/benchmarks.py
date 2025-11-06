@@ -3,6 +3,7 @@
 SemiSiameseBiEncodeMethod 就可以使用
 """
 
+import logging
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -14,6 +15,8 @@ from beir.retrieval.search.dense import DenseRetrievalExactSearch as DRES
 
 from absolute_bert.bi_encoder import BiEncoder
 from absolute_bert.formatter import NestedMetricDict, nest_a_metric_dict_tuple
+
+logger = logging.getLogger(__name__)
 
 try:
     import faiss
@@ -63,6 +66,7 @@ class BeirBenchmark:
         k_values: Sequence[int] = (1, 3, 5, 10, 100, 1000),
         corpus_chunk_size=50000,
     ) -> NestedMetricDict:
+        logger.info(f"running beir benchmark with {bi_encoder=}, scoring method `{score_fn_name}`")
 
         model = DRES(bi_encoder, batch_size=batch_size, corpus_chunk_size=corpus_chunk_size)
 

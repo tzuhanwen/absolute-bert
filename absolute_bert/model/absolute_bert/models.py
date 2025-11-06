@@ -14,8 +14,6 @@ from absolute_bert.base_types import (
     WordBiases,
     WordEmbeddings,
     EncoderInputs,
-    Encoder,
-    LanguageModel,
 )
 from .config import (
     AbsoluteAttentionConfig,
@@ -58,10 +56,24 @@ class AbsoluteAttention(nn.Module):
         self.dropout = nn.Dropout(p=0.5)
         self.layer_norm = nn.LayerNorm(config.dim)
 
-    def forward(self, tensor: States, attention_mask: Int[Tensor, "B T"]) -> States:
-        batch_length = tensor.shape[:2]
+    def forward(self, states: States, attention_mask: Int[Tensor, "B T"]) -> States:
+        batch_length = states.shape[:2]
 
-        q_flat: Float[Tensor, "B T H_Dh"] = self.Q(tensor) - self.q_bias.exp()
+        q_attentioned: Float[Tensor, "B T T H"] = self._get_q_attentioned(states, attention_mask)
+        kv: Hiddens = self._get_kv(states, attention_mask)
+        
+        loading: Hiddens = torch.einsum("btlh,blhd->bthd", q_attentioned, kv)
+        loading_flat: Float[Tensor, "B T H_Dh"] = loading.reshape(*batch_length, self.dim)
+
+        attention_output: States = self.O(loading_flat)
+        intermediate: States = self.layer_norm(states + self.dropout(attention_output))
+
+        return intermediate
+
+    def _get_q_attentioned(self, states: States, attention_mask: Int[Tensor, "B T"]) -> Float[Tensor, "B T T H"]:
+        batch_length = states.shape[:2]
+
+        q_flat: Float[Tensor, "B T H_Dh"] = self.Q(states) - self.q_bias.exp()
         q: Hiddens = q_flat.view(*batch_length, self.num_heads, self.hidden_dim)
         # q = (q + attention_mask[..., None, None])
         q = (q.sigmoid() / self.hidden_dim) * attention_mask[..., None, None]
@@ -72,29 +84,14 @@ class AbsoluteAttention(nn.Module):
         k_time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], False)
         q_attentioned: Float[Tensor, "B T T H"] = torch.einsum("bthd,lhd->btlh", q_timed, k_time)
 
-        k_flat: Float[Tensor, "B T H_Dh"] = self.K(tensor)
-        k: Hiddens = k_flat.view(*batch_length, self.num_heads, self.hidden_dim)
-        k_masked = (k / self.k_temperature) * attention_mask[..., None, None]
-        k_softmax: Hiddens = k_masked.softmax(dim=-1)
-
-        v_flat: Float[Tensor, "B T H_Dh"] = self.V(tensor)
-        v: Hiddens = v_flat.view(*batch_length, self.num_heads, self.hidden_dim)
-
-        kv: Hiddens = k_softmax * v
-        loading: Hiddens = torch.einsum("btlh,blhd->bthd", q_attentioned, kv)
-        loading_flat: Float[Tensor, "B T H_Dh"] = loading.reshape(*batch_length, self.dim)
-
-        attention_output: States = self.O(loading_flat)
-        intermediate: States = self.layer_norm(tensor + self.dropout(attention_output))
-
-        return intermediate
+        return q_attentioned
 
     def _get_time(self, length: int, with_time_delta: bool) -> Float[Tensor, "T H 2*Dt"]:
         word_positions: Int[Tensor, "T"] = torch.arange(length).to(self.head_time_delta.device)
 
         time_delta: Float[Tensor, "T 1 1"] = word_positions[:, None, None]
         if with_time_delta:
-            time_delta += self.head_time_delta[None, :, None]  # "T H 1"
+            time_delta = time_delta + self.head_time_delta[None, :, None]  # "T H 1"
 
         time_angles: Float[Tensor, "T H Dt"] = time_delta * self.time_angle
 
@@ -104,6 +101,21 @@ class AbsoluteAttention(nn.Module):
         ) / np.sqrt(self.hidden_dim)
 
         return time
+    
+    def _get_kv(self, states: States, attention_mask: Int[Tensor, "B T"]) -> Hiddens:
+        batch_length = states.shape[:2]
+
+        k_flat: Float[Tensor, "B T H_Dh"] = self.K(states)
+        k: Hiddens = k_flat.view(*batch_length, self.num_heads, self.hidden_dim)
+        k_masked = (k / self.k_temperature) * attention_mask[..., None, None]
+        k_softmax: Hiddens = k_masked.softmax(dim=-1)
+
+        v_flat: Float[Tensor, "B T H_Dh"] = self.V(states)
+        v: Hiddens = v_flat.view(*batch_length, self.num_heads, self.hidden_dim)
+
+        kv: Hiddens = k_softmax * v
+
+        return kv
 
 
 class ActivationLayer(nn.Module):
@@ -118,11 +130,11 @@ class ActivationLayer(nn.Module):
 
         self.dropout = nn.Dropout(p=0.5)
 
-    def forward(self, tensor: States) -> States:
-        activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(tensor))
+    def forward(self, states: States) -> States:
+        activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(states))
         lin_output: States = self.dropout(self.linear_out(activated))
 
-        return self.layer_norm_lin(tensor + lin_output)
+        return self.layer_norm_lin(states + lin_output)
 
 
 class AbsoluteBertLayer(nn.Module):
@@ -130,14 +142,15 @@ class AbsoluteBertLayer(nn.Module):
         self,
         config: AbsoluteBertLayerConfig,
     ) -> None:
+        super().__init__()
         self.attention = AbsoluteAttention(config.get_attention_config())
         self.activation = ActivationLayer(config.get_activation_config())
 
-    def forward(self, tensor: States) -> States:
-        return self.activation(self.attention(tensor))
+    def forward(self, states: States, attention_mask: Int[Tensor, "B T"]) -> States:
+        return self.activation(self.attention(states, attention_mask))
 
 
-class AbsoluteBert(Encoder):
+class AbsoluteBert(nn.Module):
     def __init__(
         self,
         config: AbsoluteBertConfig,
@@ -161,25 +174,32 @@ class AbsoluteBert(Encoder):
         # extended_attention_mask = attention_mask.to(dtype=self.dtype)  # fp16 compatibility
         # extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(self.dtype).min
 
-        tensor = self.embedding(inputs.input_ids)
+        states = self.embedding(inputs.input_ids)
 
         for layer in self.layers:
-            tensor = layer(tensor, inputs.attention_mask)
+            states = layer(states, inputs.attention_mask)
 
-        return tensor
+        return states
+    
+    @property
+    def embed(self) -> nn.Embedding:
+        return self.embedding
 
 
 @lm_registry.register(LanguageModelType.ABSOLUTE_BERT)
-class AbsoluteBertLM(LanguageModel):
+class AbsoluteBertLM(nn.Module):
     def __init__(self, config: AbsoluteBertConfig) -> None:
         super().__init__()
         self.base_model = AbsoluteBert(config)
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
 
     def forward(self, inputs: EncoderInputs) -> tuple[States, Labels | None]:
-        tensor = self.base_model(input_ids=inputs.input_ids, attention_mask=inputs.attention_mask)
+        states = self.base_model(inputs)
+        return states, inputs.labels
 
-        return tensor, inputs.labels
+    @property
+    def embed(self) -> nn.Embedding:
+        return self.base_model.embedding
 
     def word_embeddings(self) -> WordEmbeddings:
         return self.base_model.embedding.weight.detach()

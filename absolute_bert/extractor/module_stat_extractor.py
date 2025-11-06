@@ -1,5 +1,6 @@
 import fnmatch
 import logging
+from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Literal, TypedDict
@@ -96,7 +97,7 @@ class ModuleParamStatsExtractor:
         return any(fnmatch.fnmatch(name, pat) for pat in patterns)
 
     def extract_stats(self) -> ParamStats:
-        stats = {}
+        stats = defaultdict(dict)
 
         for (name, log_type), param in self.resolved_logging_name_type_pairs.items():
 

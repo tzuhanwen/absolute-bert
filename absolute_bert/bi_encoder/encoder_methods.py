@@ -14,6 +14,9 @@ from absolute_bert.base_types import (
 
 from .bases import SemiSiameseBiEncodeMethod
 
+import logging
+logger = logging.getLogger(__name__)
+
 EncodingsT = TypeVar("EncodingsT", bound=Encodings)
 AggregateMethod: TypeAlias = Callable[[States], Float[torch.Tensor, "b D"]]
 
@@ -36,12 +39,12 @@ class EncoderPool(SemiSiameseBiEncodeMethod, Generic[EncodingsT, EncoderOutputT]
         model: Encoder[EncoderOutputT],
         tokenize_fn: Callable[[Sequence[str]], EncodingsT],
         common_post_fn: Callable[[EncoderOutputT, EncodingsT], States],
-        pool_method_name: PoolMethodType,
+        pool_method: PoolMethodType,
     ) -> None:
         self.model = model
         self.tokenize_fn = tokenize_fn
         self.common_post_fn = common_post_fn
-        self.pool_method_name = pool_method_name
+        self.pool_method = pool_method
 
     def common_base(self, texts: Sequence[str]) -> States:
         model_inputs = self.tokenize_fn(texts)
@@ -49,7 +52,7 @@ class EncoderPool(SemiSiameseBiEncodeMethod, Generic[EncodingsT, EncoderOutputT]
         with torch.no_grad():
             inputs = EncoderInputs.from_mapping(model_inputs)
             result = self.model(inputs)
-
+            
             if self.common_post_fn is not None:
                 result = self.common_post_fn(result, model_inputs)
 
@@ -62,4 +65,4 @@ class EncoderPool(SemiSiameseBiEncodeMethod, Generic[EncodingsT, EncoderOutputT]
         return self._aggregate_fn(embeddings)
 
     def _aggregate_fn(self, embeddings: States) -> Float[torch.Tensor, "b D"]:
-        return self.pool_methods[self.pool_method_name](embeddings)
+        return self.pool_methods[self.pool_method](embeddings)

@@ -22,5 +22,5 @@ def nest_a_metric_dict_tuple(metric_dicts: MetricDicts) -> NestedMetricDict:
 
 def to_all_metrics_and_highlights(metric_dict: NestedMetricDict, category_name: str):
     all_metrics = {f"{category_name}/{k}": v for k, v in metric_dict.items()}
-    highlights = {f"highlight/{category_name}/{k}": {"10": v["10"]} for k, v in metric_dict.items()}
+    highlights = {f"highlight/{category_name}/{k}": {"10": v[10]} for k, v in metric_dict.items()}
     return all_metrics | highlights

@@ -4,6 +4,8 @@ from torch.optim.lr_scheduler import _LRScheduler
 from transformers import get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
 from absolute_bert.base_types import Config
 
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class SchedulerConfig(Config):
@@ -22,8 +24,9 @@ GETTERS = {
 
 
 def make_scheduler(optimizer, num_batches: int, config: SchedulerConfig) -> _LRScheduler:
-    getter = GETTERS[config.type]
-    scheduler = getter(
+    logger.debug(f"make_scheduler, {optimizer=}, {num_batches=}, {config=}")
+
+    scheduler = GETTERS[config.type](
         optimizer,
         num_warmup_steps=num_batches * config.num_epochs * config.warmup_ratio,
         num_training_steps=num_batches * config.num_epochs,

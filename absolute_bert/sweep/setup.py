@@ -4,12 +4,12 @@ import os
 
 from omegaconf import OmegaConf
 from absolute_bert.utils import init_logging
-from .config import ExperimentUnresolved, ExperimentConfig
+from .config import ExperimentUnresolved
 
 logger = logging.getLogger(__name__)
 
 
-def get_config() -> ExperimentConfig:
+def get_config() -> ExperimentUnresolved:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Optional YAML config override")
@@ -40,14 +40,13 @@ def get_config() -> ExperimentConfig:
     logger.info(f"parsing configs: {config_dict=}")
 
     config_unresolved = ExperimentUnresolved.from_dict(config_dict)
-    config = config_unresolved.resolve()
-    logger.info(f"config resolved: {config=}")
-
-    return config
+    return config_unresolved
 
 
-if __name__ == "__main__":
+def main():
     init_logging()
     config = get_config()
-
     print(config.to_dict())
+
+if __name__ == "__main__":
+    main()

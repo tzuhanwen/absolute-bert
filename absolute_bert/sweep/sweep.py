@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 from transformers import AutoTokenizer, DataCollatorForLanguageModeling
 
 from absolute_bert.model import lm_registry
-from absolute_bert import loss
+from absolute_bert.loss import CrossEntropy
 from absolute_bert.base_types import (
     EncoderInputs,
     EncoderInputsWithLabels,
@@ -35,7 +35,12 @@ logger = logging.getLogger(__name__)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"using device `{device}` for sweeping")
 
-config = setup.get_config()
+config_unresolved = setup.get_config()
+
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+config = config_unresolved.resolve(tokenizer.vocab_size)
+logger.info(f"config resolved: {config=}")
 
 run = wandb.init(
     **config.wandb.to_dict(),
@@ -55,7 +60,7 @@ artifact = wandb.use_artifact("ghuang-nlp/dataset/wikipedia.en-0.01:v0", type="d
 artifact_dir = artifact.download()
 datadict = load_from_disk(artifact_dir)
 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
 collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=config.train.masking_probability
 )
@@ -67,11 +72,14 @@ val_loader = DataLoader(datadict["test"], batch_size=config.batch_sizes.val, col
 # %% preparing train process
 logger.info("preparing train process")
 
+#load model and test
 model: LanguageModel = lm_registry[config.train.model_type](config.model).to(device)
-loss_fn = loss.CrossEntropy(model)
+batch = next(iter(train_loader))
+model.forward(EncoderInputs.from_mapping(batch.to(device)))
 logger.info(f"using model `{repr(model)}`")
 
 
+loss_fn = CrossEntropy(model, config.loss)
 optimizer = make_adamw(model, config=config.optimizer)
 scheduler = make_scheduler(optimizer, num_batches=len(train_loader), config=config.scheduler)
 averager = MultiLossAverager()
@@ -79,8 +87,8 @@ averager = MultiLossAverager()
 # %% evaluation setup
 logger.info("evaluation setup")
 
-static_embedding_encoder = EncoderEmbeddingPool.from_model(model, tokenizer, device)
-model_output_encoder = EncoderOutputPool.from_model(model, tokenizer, device)
+static_embedding_encoder = EncoderEmbeddingPool.from_model(model.base_model, tokenizer, device)
+model_output_encoder = EncoderOutputPool.from_model(model.base_model, tokenizer, device)
 benchmark = BeirBenchmark(corpus_name="scifact")
 param_extractor = ModuleParamStatsExtractor(model, config.logging.params.rules)
 logging_keys = list(param_extractor.extract_stats().keys())

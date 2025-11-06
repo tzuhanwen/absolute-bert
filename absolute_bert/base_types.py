@@ -26,9 +26,12 @@ EncoderOutputT = TypeVar("EncoderOutputT")
 
 class _ConfigBase:
     @classmethod
-    def from_dict(cls, d: dict[Any, Any]) -> Self:
+    def from_dict(cls, d: dict[Any, Any], type_hooks: dict[Any, Any] | None = None) -> Self:
         try:
-            return dacite.from_dict(cls, d)
+            if type_hooks is None:
+                return dacite.from_dict(cls, d)
+            return dacite.from_dict(cls, d, config=dacite.Config(type_hooks=type_hooks))
+        
         except MissingValueError as e:
             # missing_attr = ".".join(e.field_path)
             raise ValueError(f"missing {e.field_path}") from e
@@ -61,10 +64,10 @@ class ConfigUnresolved(_ConfigBase, Generic[configT]):
         return target_class
 
     def resolve(self, **kwargs: Any) -> configT:
-        logger.debug(f"resolving configs `{self.__class__.__name__}`, {type(self)=}")
+        logger.debug(f"resolving configs `{self.__class__.__name__}`, {type(self)=}, {kwargs=}")
 
         overrides = self._collect_overrides()
-        return self._resolve_target(kwargs | overrides)
+        return self._resolve_target(**(overrides | kwargs))
 
     def _collect_overrides(self) -> dict[Any, Any]:
         overrides = {}
@@ -108,14 +111,11 @@ class EncoderInputs(EncoderInputsBase):
     special_tokens_mask: Sequences | None = None
 
 
-class Encoder(nn.Module, ABC, Generic[EncoderOutputT]):
+class Encoder(Protocol[EncoderOutputT]):
     @abstractmethod
     def forward(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
 
     def __call__(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
-
-
-SequenceEncoder: TypeAlias = Encoder[States]
 
 
 class LanguageModelingCapable(Protocol):
@@ -126,20 +126,22 @@ class LanguageModelingCapable(Protocol):
     def word_biases(self) -> WordBiases: ...
 
 
-class LanguageModel(Encoder[tuple[States, Sequences | None]], ABC):
+class LanguageModel(Encoder[tuple[States, Sequences | None]], LanguageModelingCapable, Protocol):
     @overload
     def __call__(self, inputs: EncoderInputsWithLabels) -> tuple[States, Labels]: ...
     @overload
     def __call__(self, inputs: EncoderInputs) -> tuple[States, Labels | None]: ...
     def __call__(self, inputs: EncoderInputsBase) -> tuple[States, Labels | None]: ...
 
-    @abstractmethod
     def word_embeddings(self) -> WordEmbeddings: ...
 
-    @abstractmethod
     def word_biases(self) -> WordBiases: ...
 
 
 class Embeddable(Protocol):
     @property
     def embed(self) -> nn.Embedding: ...
+
+
+class SequenceEncoder(Encoder[States], Embeddable, Protocol):
+    pass

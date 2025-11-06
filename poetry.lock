@@ -4153,4 +4153,4 @@ benchmark = ["beir", "faiss-cpu", "tqdm"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "0bdef2d4e7148b64312abb73566324c4dc973c100d0ce9f17426c1d27a23191d"
+content-hash = "d4ae7389eaa9a52a97adb82e902fa5f25e5bfcb0ab9b2d7a2490e84319b6ce6c"

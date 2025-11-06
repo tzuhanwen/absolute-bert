@@ -29,7 +29,7 @@ class _EncoderTokenizer:
 class _EncoderMixin:
 
     @classmethod
-    def _pure_text_token_vectors(cls, output: States, inputs: EncoderInputs) -> States:
+    def _pure_text_token_vectors(cls, output: tuple[States], inputs: EncoderInputs) -> States:  
         """special_token and padding_token will map to zero vector."""
         if inputs.special_tokens_mask is None:
             raise AttributeError
