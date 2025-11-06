@@ -17,6 +17,7 @@ transformers = "^4.57.1"
 datasets = "^4.3.0"
 nltk = "^3.9.2"
 omegaconf = "^2.3.0"
+dacite = "^1.9.2"
 
 [tool.poetry.extras]
 benchmark = ["beir", "faiss-cpu", "tqdm"]
