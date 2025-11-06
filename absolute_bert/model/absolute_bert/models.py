@@ -6,7 +6,8 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from ...base_types import (
+
+from absolute_bert.base_types import (
     Hiddens,
     Labels,
     States,
@@ -22,6 +23,7 @@ from .config import (
     AbsoluteBertLayerConfig,
     ActivationLayerConfig,
 )
+from ..registry import LanguageModelType, lm_registry
 
 
 class AbsoluteAttention(nn.Module):
@@ -167,6 +169,7 @@ class AbsoluteBert(Encoder):
         return tensor
 
 
+@lm_registry.register(LanguageModelType.ABSOLUTE_BERT)
 class AbsoluteBertLM(LanguageModel):
     def __init__(self, config: AbsoluteBertConfig) -> None:
         super().__init__()

@@ -2,7 +2,9 @@ from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 
 import torch
-from absolute_bert.base_types import Config
+from absolute_bert.base_types import Config, LanguageModelConfig
+
+from ..registry import lm_config_registry, LanguageModelType
 
 
 @dataclass
@@ -48,8 +50,9 @@ class AbsoluteBertLayerConfig(Config):
         return ActivationLayerConfig(dim=self.dim, hidden_dim=self.activation_dim)
 
 
+@lm_config_registry.register(LanguageModelType.ABSOLUTE_BERT)
 @dataclass
-class AbsoluteBertConfig(Config):
+class AbsoluteBertConfig(LanguageModelConfig):
     vocab_size: int
     dim: int = 512
     num_heads: int = 8

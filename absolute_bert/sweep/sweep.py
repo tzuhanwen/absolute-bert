@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, DataCollatorForLanguageModeling
 
-import absolute_bert.models.absolute_bert.models as abs_bert
+from absolute_bert.model import lm_registry
 from absolute_bert import loss
 from absolute_bert.base_types import (
     EncoderInputs,
@@ -67,7 +67,7 @@ val_loader = DataLoader(datadict["test"], batch_size=config.batch_sizes.val, col
 # %% preparing train process
 logger.info("preparing train process")
 
-model: LanguageModel = abs_bert.AbsoluteBertLM(config).to(device)
+model: LanguageModel = lm_registry[config.train.model_type](config.model).to(device)
 loss_fn = loss.CrossEntropy(model)
 logger.info(f"using model `{repr(model)}`")
 

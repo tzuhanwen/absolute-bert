@@ -15,11 +15,12 @@ class Registry(Generic[N, T]):
     def __init__(self) -> None:
         self._registry: dict[N, T] = {}
 
-    def register(self, key: N) -> Callable[[T], None]:
+    def register(self, key: N) -> Callable[[T], T]:
         return partial(self._register, key)
 
-    def _register(self, key: N, item: T) -> None:
+    def _register(self, key: N, item: T) -> T:
         self._registry[key] = item
+        return item
 
     def get(self, key: N) -> T | None:
         return self._registry.get(key)

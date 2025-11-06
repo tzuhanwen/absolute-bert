@@ -40,6 +40,8 @@ class _ConfigBase:
 class Config(_ConfigBase):
     pass
 
+LanguageModelConfig: TypeAlias = Config
+
 configT = TypeVar("configT", bound=Config)
 
 @dataclass

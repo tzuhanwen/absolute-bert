@@ -2,9 +2,12 @@ wandb:
   entity: "ghuang-nlp"
   project: "absolute-bert"
   job_type: "sweep"  # "sweep", "train"
-# train:
+train:
+  model_type: "absolute_bert"
 #   num_epochs: 1
-  max_steps: 10
+  max_steps: 100000
+# model_params:
+#   dims: 512
 batch_sizes:
   train: 48
   val: 128

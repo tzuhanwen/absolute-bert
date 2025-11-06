@@ -56,8 +56,8 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.relic]
-zones = ["absolute_bert/models"]
-default_station = "model_registry"
+zones = ["absolute_bert/model"]
+# default_station = "model_registry"
 # default_depth = 0
 debug = false
 

@@ -7,7 +7,7 @@ from absolute_bert.base_types import Config
 
 @dataclass
 class SchedulerConfig(Config):
-    epochs: int
+    num_epochs: int
     type: Literal["cosine", "linear"] = "cosine"
     warmup_ratio: int = 0.1
     # step_size: int | None = None
@@ -25,8 +25,8 @@ def make_scheduler(optimizer, num_batches: int, config: SchedulerConfig) -> _LRS
     getter = GETTERS[config.type]
     scheduler = getter(
         optimizer,
-        num_warmup_steps=num_batches * config.epochs * config.warmup_ratio,
-        num_training_steps=num_batches * config.epochs,
+        num_warmup_steps=num_batches * config.num_epochs * config.warmup_ratio,
+        num_training_steps=num_batches * config.num_epochs,
     )
 
     return scheduler
