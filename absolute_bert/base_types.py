@@ -110,7 +110,6 @@ class Encoder(nn.Module, ABC, Generic[EncoderOutputT]):
     @abstractmethod
     def forward(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
 
-    @abstractmethod
     def __call__(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
 
 
@@ -127,12 +126,9 @@ class LanguageModelingCapable(Protocol):
 
 class LanguageModel(Encoder[tuple[States, Sequences | None]], ABC):
     @overload
-    @abstractmethod
     def __call__(self, inputs: EncoderInputsWithLabels) -> tuple[States, Labels]: ...
     @overload
-    @abstractmethod
     def __call__(self, inputs: EncoderInputs) -> tuple[States, Labels | None]: ...
-    @abstractmethod
     def __call__(self, inputs: EncoderInputsBase) -> tuple[States, Labels | None]: ...
 
     @abstractmethod

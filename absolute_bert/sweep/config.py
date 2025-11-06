@@ -42,15 +42,15 @@ class Logging(Config):
     every_n_steps: int
     
 
-@dataclass
+@dataclass(frozen=True)
 class ParamLogging(Config):
     every_n_steps: int = 500
-    rules: Sequence[ExtractingModuleRule] = ()
+    rules: tuple[ExtractingModuleRule] = ()
 
 
 @dataclass
 class LoggingConfig(Config):
-    params: ParamLogging
+    params: ParamLogging = field(default=ParamLogging())
     train: Logging = field(default=Logging(10))
     val: Logging = field(default=Logging(500))
     ir: Logging = field(default=Logging(2000))

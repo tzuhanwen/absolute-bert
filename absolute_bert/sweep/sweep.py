@@ -51,7 +51,7 @@ run = wandb.init(
 # %% data preparation
 logger.info("data preparation")
 
-artifact = wandb.use_artifact("ghuang-nlp/uncategorized/wikipedia.en-0.01:v0", type="dataset")
+artifact = wandb.use_artifact("ghuang-nlp/dataset/wikipedia.en-0.01:v0", type="dataset")
 artifact_dir = artifact.download()
 datadict = load_from_disk(artifact_dir)
 
