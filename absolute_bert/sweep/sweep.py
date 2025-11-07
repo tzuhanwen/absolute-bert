@@ -89,7 +89,9 @@ logger.info("evaluation setup")
 
 static_embedding_encoder = EncoderEmbeddingPool.from_model(model.base_model, tokenizer, device)
 model_output_encoder = EncoderOutputPool.from_model(model.base_model, tokenizer, device)
-benchmark = BeirBenchmark(corpus_name="scifact")
+
+corpus_name = "scifact"
+benchmark = BeirBenchmark(corpus_name=corpus_name)
 param_extractor = ModuleParamStatsExtractor(model, config.logging.params.rules)
 logging_keys = list(param_extractor.extract_stats().keys())
 logging.info(f"logging following params in model: {repr(logging_keys)}")
@@ -104,9 +106,7 @@ def evaluate_and_log(tag: str, epoch_num: int | None = None):
             ("model_output", output_metrics),
             ("static_embeddings", static_embeddings_metrics),
         ]
-        wandb_logger.log_beir_metrics_without_commit(metrics, global_step, epoch_num)
-
-
+        wandb_logger.log_beir_metrics_without_commit(metrics, global_step, corpus_name, epoch_num)
 
 
 # %% train start

@@ -13,12 +13,13 @@ class WandbLogger:
 
     def log_beir_metrics_without_commit(
         self,
-        metric_dicts: Iterable[tuple[str, NestedMetricDict]],
+        nested_metric_dicts: Iterable[tuple[str, NestedMetricDict]],
         global_step: int,
+        corpus_name: str,
         epoch_num: int | None = None,
     ) -> None:
-        for name, metric_dict in metric_dicts:
-            mixed_dict = to_all_metrics_and_highlights(metric_dict, name)
+        for name, nested_metric_dict in nested_metric_dicts:
+            mixed_dict = to_all_metrics_and_highlights(nested_metric_dict, f"{corpus_name}-{name}")
 
             logging_dict = mixed_dict
             if epoch_num is not None:

@@ -20,7 +20,14 @@ def nest_a_metric_dict_tuple(metric_dicts: MetricDicts) -> NestedMetricDict:
     return nested_dict
 
 
-def to_all_metrics_and_highlights(metric_dict: NestedMetricDict, category_name: str):
-    all_metrics = {f"{category_name}/{k}": v for k, v in metric_dict.items()}
-    highlights = {f"highlight/{category_name}/{k}": {"10": v[10]} for k, v in metric_dict.items()}
+def to_all_metrics_and_highlights(nested_metric_dict: NestedMetricDict, category_name: str):
+    all_metrics = {
+        f"{category_name}/{metric_name}@{k}": value
+        for metric_name, metric_dict in nested_metric_dict.items()
+        for k, value in metric_dict.items()
+    }
+    highlights = {
+        f"highlight-{category_name}/{metric_name}@10": metric_dict[10]
+        for metric_name, metric_dict in nested_metric_dict.items()
+    }
     return all_metrics | highlights
