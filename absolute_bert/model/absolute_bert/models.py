@@ -201,8 +201,10 @@ class AbsoluteBertLM(nn.Module):
     def embed(self) -> nn.Embedding:
         return self.base_model.embedding
 
+    @property
     def word_embeddings(self) -> WordEmbeddings:
-        return self.base_model.embedding.weight.detach()
+        return self.base_model.embedding.weight
 
+    @property
     def word_biases(self) -> WordBiases:
-        return self.bias.detach()
+        return self.bias

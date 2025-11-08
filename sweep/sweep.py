@@ -19,12 +19,12 @@ from absolute_bert.extractor import ModuleParamStatsExtractor
 from absolute_bert.loggers import WandbLogger
 from absolute_bert.utils import init_logging
 
-from . import setup
-from .evaluate import BeirBenchmark
-from .optimizer import make_adamw
-from .scheduler import make_scheduler
-from .train import MultiLossAverager, format_losses
-from .utils import log_step
+from absolute_bert.sweep import setup
+from absolute_bert.sweep.evaluate import BeirBenchmark
+from absolute_bert.sweep.optimizer import make_adamw
+from absolute_bert.sweep.scheduler import make_scheduler
+from absolute_bert.sweep.train import MultiLossAverager, format_losses
+from absolute_bert.sweep.utils import log_step
 
 if __name__ == "__main__":
     init_logging()

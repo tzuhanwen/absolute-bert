@@ -17,9 +17,9 @@ class CrossEntropy(nn.Module):
 
     def forward(self, outputs: States, labels: Labels) -> Loss:
         preds: Float[Tensor, "B T V"] = (
-            outputs @ self.model.word_embeddings().T + self.model.word_biases()
+            outputs @ self.model.word_embeddings.T + self.model.word_biases
         )
-        return self.loss(preds.view(-1, self.model.word_biases().shape[0]), labels.view(-1))
+        return self.loss(preds.view(-1, self.model.word_biases.shape[0]), labels.view(-1))
 
 
 class CrossEntropyL2Embedding(nn.Module):

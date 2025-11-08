@@ -13,4 +13,13 @@ if [ -z "$WANDB_SWEEP_ID" ]; then
   exit 1
 fi
 
+if [ -n "$ABSOLUTE_BERT_BRANCH_NAME" ]; then
+  # env 有值 → 執行這個 block
+  echo "[INFO] switching branch to: $ABSOLUTE_BERT_BRANCH_NAME"
+  exec git switch -f "$ABSOLUTE_BERT_BRANCH_NAME"
+fi
+
+echo "[INFO] perform git pull"
+exec git pull -f
+
 exec wandb agent "$WANDB_SWEEP_ID"

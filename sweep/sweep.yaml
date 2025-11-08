@@ -1,0 +1,32 @@
+program: sweep/sweep.py
+method: bayes
+metric:
+  name: val/final_loss
+  goal: minimize
+
+parameters:
+  wandb.job_type:
+    value: "sweep"
+  config:
+    value: "configs/default.yaml"
+
+  optimizer.lr:
+    distribution: log_uniform_values
+    min: 1e-5
+    max: 3e-4
+
+  scheduler.warmup_ratio:
+    min: 0.05
+    max: 0.2
+
+  # mode.k_temperature:
+  #   min: 0.1
+  #   max: 1.0
+
+  train.masking_probability:
+    values: [0.1, 0.15, 0.2, 0.3]
+
+  # scheduler.type:
+  #   values: ["cosine", "linear", "constant"]
+
+  

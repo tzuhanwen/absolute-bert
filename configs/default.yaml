@@ -1,7 +1,7 @@
 wandb:
   entity: "ghuang-nlp"
   project: "absolute-bert"
-  job_type: "sweep"  # "sweep", "train"
+  job_type: "train"  # "sweep", "train"
 train:
   model_type: "absolute_bert"
 #   num_epochs: 1

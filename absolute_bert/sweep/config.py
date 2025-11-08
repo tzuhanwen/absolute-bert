@@ -63,7 +63,7 @@ class LoggingConfig(Config):
 @dataclass
 class SchedulerUnresolved(ConfigUnresolved[SchedulerConfig]):
     type: Literal["cosine", "linear"] | None = None
-    warmup_ratio: int | None = None
+    warmup_ratio: float | None = None
 
 
 class LanguageModelUnresolved(ConfigUnresolved[LanguageModelConfig]):

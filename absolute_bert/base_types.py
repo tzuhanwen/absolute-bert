@@ -25,6 +25,7 @@ EncoderOutputT = TypeVar("EncoderOutputT")
 
 
 class _ConfigBase:
+
     @classmethod
     def from_dict(cls, d: dict[Any, Any], type_hooks: dict[Any, Any] | None = None) -> Self:
         try:
@@ -112,6 +113,7 @@ class EncoderInputs(EncoderInputsBase):
 
 
 class Encoder(Protocol[EncoderOutputT]):
+
     @abstractmethod
     def forward(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
 
@@ -119,26 +121,28 @@ class Encoder(Protocol[EncoderOutputT]):
 
 
 class LanguageModelingCapable(Protocol):
+
     def forward(self, *args: Any, **kwargs: Any) -> tuple[States, Labels | None]: ...
 
+    @property
     def word_embeddings(self) -> WordEmbeddings: ...
 
+    @property
     def word_biases(self) -> WordBiases: ...
 
 
 class LanguageModel(Encoder[tuple[States, Sequences | None]], LanguageModelingCapable, Protocol):
+
     @overload
     def __call__(self, inputs: EncoderInputsWithLabels) -> tuple[States, Labels]: ...
     @overload
     def __call__(self, inputs: EncoderInputs) -> tuple[States, Labels | None]: ...
     def __call__(self, inputs: EncoderInputsBase) -> tuple[States, Labels | None]: ...
 
-    def word_embeddings(self) -> WordEmbeddings: ...
-
-    def word_biases(self) -> WordBiases: ...
 
 
 class Embeddable(Protocol):
+    
     @property
     def embed(self) -> nn.Embedding: ...
 

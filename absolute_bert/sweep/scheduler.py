@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class SchedulerConfig(Config):
     num_epochs: int
     type: Literal["cosine", "linear"] = "cosine"
-    warmup_ratio: int = 0.1
+    warmup_ratio: float = 0.1
     # step_size: int | None = None
     # gamma: float | None = None
     # T_max: int | None = None

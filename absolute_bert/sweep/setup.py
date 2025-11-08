@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+from typing import Any
 
 from omegaconf import OmegaConf
 from absolute_bert.utils import init_logging
@@ -9,29 +10,42 @@ from .config import ExperimentUnresolved
 logger = logging.getLogger(__name__)
 
 
+def parse_cli_unknown_args(xs: list[str]) -> dict[str, str]:
+    logger.debug(f"start of parse_cli_unknown_args, {xs=}")
+    d = {}
+    key = None
+    for x in xs:
+        if x.startswith("--"):
+            if "=" in x:
+                key, value = x[2:].split("=")
+                d[key] = value
+                continue
+            key = x[2:]
+        else:
+            if key is None:
+                raise ValueError(f"Unexpected CLI value without key: {x}")
+            if d.get(key, None) is not None:
+                raise ValueError(f"key `{key}` already set to `{x}`")
+            
+            d[key] = x
+            key = None
+    return d
+
 def get_config() -> ExperimentUnresolved:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, help="Optional YAML config override")
-    parser.add_argument("--lr", type=float)
-    parser.add_argument("--warmup_ratio", type=float)
-    parser.add_argument("--k_temperature", type=float)
-    parser.add_argument("--masking_probability", type=float)
-    parser.add_argument("--scheduler", type=str)
-    parser.add_argument("--job_type", type=str)
-
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    options = parse_cli_unknown_args(unknown)
+    logger.debug(f"cli options parsed: `{options=}`")
+    cli_config = OmegaConf.from_dotlist([f"{k}={v}" for k, v in options.items()])
+    logger.info(f"configs from cli: `{cli_config=}`")
 
     # 試著讀 config.yaml；沒指定或失敗就給空 config
     user_config = (
         OmegaConf.load(args.config)
         if args.config and os.path.exists(args.config)
         else OmegaConf.create()
-    )
-
-    # 把 argparse 的參數抓出來轉成 config（排除掉 None）
-    cli_config = OmegaConf.create(
-        {k: v for k, v in vars(args).items() if v is not None and k != "config"}
     )
 
     # 最終設定：default < config.yaml < CLI
