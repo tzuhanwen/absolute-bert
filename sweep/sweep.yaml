@@ -1,4 +1,7 @@
+entity: your-entity-name
+project: absolute-bert
 program: sweep/sweep.py
+
 method: bayes
 metric:
   name: val/final_loss

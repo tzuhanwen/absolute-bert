@@ -13,4 +13,4 @@ if [ -z "$WANDB_SWEEP_ID" ]; then
   exit 1
 fi
 
-exec wandb agent "$WANDB_SWEEP_ID"
+exec wandb agent "$WANDB_SWEEP_ID" --count 1

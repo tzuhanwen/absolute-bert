@@ -22,4 +22,4 @@ fi
 echo "[INFO] perform git pull"
 exec git pull -f
 
-exec wandb agent "$WANDB_SWEEP_ID"
+exec wandb agent "$WANDB_SWEEP_ID" --count 1
