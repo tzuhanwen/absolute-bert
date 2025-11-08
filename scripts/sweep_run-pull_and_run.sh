@@ -20,6 +20,7 @@ if [ -n "$ABSOLUTE_BERT_BRANCH_NAME" ]; then
 fi
 
 echo "[INFO] perform git pull"
-exec git pull -f
+exec git fetch
+exec git reset --hard backup
 
 exec wandb agent "$WANDB_SWEEP_ID" --count 1
