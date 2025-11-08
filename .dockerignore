@@ -1,0 +1,18 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.log
+.DS_Store
+
+# Python venv
+venv
+.venv
+
+# Node (如果有)
+node_modules
+dist
+build
+
+# Jupyter 廢物
+*.ipynb_checkpoints

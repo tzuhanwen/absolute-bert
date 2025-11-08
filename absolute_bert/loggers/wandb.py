@@ -31,11 +31,11 @@ class WandbLogger:
 
         logging_dict = {}
 
-        norm_prefix = "params/norm"
+        norm_prefix = "params/module_norm"
         for module_name, norm in param_stats["norm"].items():
             logging_dict[f"{norm_prefix}/{module_name}"] = norm
 
-        dist_prefix = "params/dist"
+        dist_prefix = "params/module_dist"
         for module_name, histogram_data in param_stats["dist"].items():
             histogram = wandb.Histogram(np_histogram=(histogram_data.counts, histogram_data.bins))
             logging_dict[f"{dist_prefix}/{module_name}"] = histogram
