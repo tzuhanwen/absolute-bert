@@ -10,4 +10,4 @@ RUN rm -rf /root/.cache/pip && rm -rf /root/.cache/pypoetry
 RUN chmod a+x scripts/sweep_run-entrypoint.sh && \
     chmod a+x scripts/sweep_run-pull_and_run.sh
 
-ENTRYPOINT ["scripts/sweep_run-pull_and_run.sh"]
+ENTRYPOINT ["scripts/sweep_run-entrypoint.sh"]
