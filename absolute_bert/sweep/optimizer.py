@@ -5,11 +5,13 @@ from torch import nn, optim
 from dataclasses import dataclass
 from absolute_bert.base_types import Config
 
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class OptimizerConfig(Config):
     lr: float = 1e-4
-    no_decay: tuple[str, ...] = ("bias", "LayerNorm.weight")
+    no_decay: tuple[str, ...] = ("bias", "layer_norm.weight")
     weight_decay: float = 0.01
 
 
@@ -39,5 +41,9 @@ def _make_parameter_groups(model: nn.Module, config: OptimizerConfig) -> list[Pa
 def make_adamw(model: nn.Module, config: OptimizerConfig):
 
     optimizer_grouped_parameters = _make_parameter_groups(model, config)
+    logger.info(f"{optimizer_grouped_parameters=}")
+
     optimizer = optim.AdamW(optimizer_grouped_parameters, lr=config.lr)
+    logger.info(f"{optimizer=}")
+    
     return optimizer
