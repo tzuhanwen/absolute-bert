@@ -51,7 +51,7 @@ class EncoderOutputPool(SemiSiameseBiEncoder[States], _EncoderMixin):
         model: Encoder,
         tokenzier: PreTrainedTokenizerBase,
         device: Device,
-        pool_method: PoolMethodType = "mean",
+        pool_method: PoolMethodType = PoolMethodType.MEAN,
         using_corpus_part: str = "text",
     ) -> Self:
 

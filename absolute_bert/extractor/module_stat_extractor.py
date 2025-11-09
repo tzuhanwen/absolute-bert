@@ -1,29 +1,24 @@
 import fnmatch
 import logging
-from collections import defaultdict
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
-from typing import Literal, TypedDict
-
+from collections.abc import Iterable
+from typing import TypeAlias
 from torch.nn import Module, Parameter
 from torch.types import Number
 
 from ._module_name_resolver import ModuleNameResolver
-from .data_types import HistogramData
+from .extractor_types import HistogramData, ModuleExtractingRule, ExtractionType, Extractor
+
+ModuleName: TypeAlias = str
+
 
 logger = logging.getLogger(__name__)
 
-@dataclass(frozen=True)
-class ExtractingModuleRule:
-    include: Sequence[str] = ()
-    exclude: Sequence[str] = ()
-    log_norm: bool = True
-    log_distribution: bool = True
 
-
-class ParamStats(TypedDict):
-    norm: dict[str, Number]
-    dist: dict[str, HistogramData]
+EXTRACTORS: dict[ExtractionType, Extractor] = {
+    ExtractionType.MODULE_NORM: lambda param: param.detach().norm().item(),
+    ExtractionType.PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(param.detach().cpu().numpy()),
+    ExtractionType.NORM_DIST_ALONG_LAST_DIM: lambda param: HistogramData.from_array(param.detach().norm(dim=-1).cpu().numpy())
+}
 
 
 class ModuleParamStatsExtractor:
@@ -56,13 +51,13 @@ class ModuleParamStatsExtractor:
         wandb.log(log_dict, step=global_step)
     """
 
-    def __init__(self, model: Module, rules: Iterable[ExtractingModuleRule]):
+    def __init__(self, model: Module, rules: Iterable[ModuleExtractingRule]):
         self.model = model
         self.named_modules = dict(model.named_modules())
         self.named_parameters = dict(model.named_parameters())
         self.rules = rules
         self.resolved_logging_name_type_pairs: dict[
-            tuple[str, Literal["norm", "dist"]], Parameter
+            tuple[ModuleName, ExtractionType], Parameter
         ] = {}
 
         module_names = list(self.named_modules.keys())
@@ -75,8 +70,6 @@ class ModuleParamStatsExtractor:
                 ModuleNameResolver.resolve_suffix_indices(r, module_names)
                 for r in rule.exclude
             ]
-            log_distribution = rule.log_distribution
-            log_norm = rule.log_norm
 
             logger.info(f"Rule solved, `{include=}`, `{exclude=}`.")
 
@@ -88,23 +81,18 @@ class ModuleParamStatsExtractor:
                 if self._match_name(name, exclude):
                     continue
 
-                if log_distribution:
-                    self.resolved_logging_name_type_pairs[(name, "dist")] = param
-                if log_norm:
-                    self.resolved_logging_name_type_pairs[(name, "norm")] = param
+                for method in set(rule.methods):
+                    key = (name, ExtractionType(method))
+                    self.resolved_logging_name_type_pairs[key] = param
 
     def _match_name(self, name: str, patterns: list[str]) -> bool:
         return any(fnmatch.fnmatch(name, pat) for pat in patterns)
 
-    def extract_stats(self) -> ParamStats:
-        stats = defaultdict(dict)
+    def extract_stats(self) -> dict[str, HistogramData | Number]:
+        stats = {}
 
-        for (name, log_type), param in self.resolved_logging_name_type_pairs.items():
+        for (module_name, log_type), param in self.resolved_logging_name_type_pairs.items():
 
-            if log_type == "dist":
-                stats["dist"][name] = HistogramData.from_array(param.detach().cpu().numpy())
-
-            elif log_type == "norm":
-                stats["norm"][name] = param.detach().norm().item()
+            stats[f"{log_type}/{module_name}"] = EXTRACTORS[log_type](param)
 
         return stats

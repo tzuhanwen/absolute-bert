@@ -1,7 +1,7 @@
 wandb:
   entity: "ghuang-nlp"
   project: "absolute-bert"
-  job_type: "train"  # "sweep", "train"
+  job_type: "prototype"  # "sweep", "train"
 train:
   model_type: "absolute_bert"
 #   num_epochs: 1
@@ -28,8 +28,10 @@ logging:
           - "base_model.layers.*.layer_norm*"
           - "bias"
         exclude: ["*.bias"]
-        log_distribution: true
-        log_norm: true
+        methods: ["module_norm", "param_distribution"]
+      -
+        include: ["*.embedding"]
+        methods: ["norm_dist_along_last_dim"]
   # train: 
   #   every_n_steps: 10
   # val:

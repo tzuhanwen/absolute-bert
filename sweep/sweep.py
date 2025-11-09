@@ -94,11 +94,11 @@ corpus_name = "scifact"
 benchmark = BeirBenchmark(corpus_name=corpus_name)
 param_extractor = ModuleParamStatsExtractor(model, config.logging.params.rules)
 logging_keys = list(param_extractor.extract_stats().keys())
-logging.info(f"logging following params in model: {repr(logging_keys)}")
+logging.info(f"logging following parameter stats on named modules: {repr(logging_keys)}")
 
 wandb_logger = WandbLogger()
 
-def evaluate_and_log(tag: str, epoch_num: int | None = None):
+def run_benchmarks_and_log(tag: str, epoch_num: int | None = None):
     with log_step(step=global_step, tag=tag):
         output_metrics = benchmark.run(model_output_encoder, config.batch_sizes.ir)
         static_embeddings_metrics = benchmark.run(static_embedding_encoder, config.batch_sizes.ir)
@@ -115,7 +115,7 @@ logger.info("train start")
 global_step = 0
 
 model.eval()
-evaluate_and_log("global_step 0")
+run_benchmarks_and_log("global_step 0")
 
 for epoch_num in range(config.train.num_epochs):
 
@@ -179,7 +179,7 @@ for epoch_num in range(config.train.num_epochs):
 
         if global_step % config.logging.ir.every_n_steps == 0:
             model.eval()
-            evaluate_and_log("beir")
+            run_benchmarks_and_log("beir")
 
         # del batch, loss
 
@@ -187,7 +187,7 @@ for epoch_num in range(config.train.num_epochs):
             break
 
     model.eval()
-    evaluate_and_log("beir", epoch_num)
+    run_benchmarks_and_log("beir", epoch_num)
 
 # model_artifact = wandb.Artifact(name="model",
 #   type="model",

@@ -126,7 +126,7 @@ class ActivationLayer(nn.Module):
         self.linear_in = nn.Linear(config.dim, config.hidden_dim)
         self.act_fn = nn.GELU(approximate="tanh")
         self.linear_out = nn.Linear(config.hidden_dim, config.dim)
-        self.layer_norm_lin = nn.LayerNorm(config.dim)
+        self.layer_norm = nn.LayerNorm(config.dim)
 
         self.dropout = nn.Dropout(p=0.5)
 
@@ -134,7 +134,7 @@ class ActivationLayer(nn.Module):
         activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(states))
         lin_output: States = self.dropout(self.linear_out(activated))
 
-        return self.layer_norm_lin(states + lin_output)
+        return self.layer_norm(states + lin_output)
 
 
 class AbsoluteBertLayer(nn.Module):

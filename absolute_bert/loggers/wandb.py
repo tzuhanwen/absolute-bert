@@ -1,7 +1,7 @@
 from typing import Iterable, Any
 import wandb
 
-from absolute_bert.extractor import ParamStats
+from absolute_bert.extractor import HistogramData, Statistic
 from absolute_bert.formatter import to_all_metrics_and_highlights
 from absolute_bert.base_types import NestedMetricDict
 
@@ -27,17 +27,16 @@ class WandbLogger:
 
             wandb.log(logging_dict, step=global_step, commit=False)
 
-    def log_param_stats_without_commit(self, param_stats: ParamStats, global_step: int) -> None:
+    def log_param_stats_without_commit(self, param_stats: dict[str, Statistic], global_step: int) -> None:
 
         logging_dict = {}
 
-        norm_prefix = "params/module_norm"
-        for module_name, norm in param_stats["norm"].items():
-            logging_dict[f"{norm_prefix}/{module_name}"] = norm
+        for stat_name, stat in param_stats.items():
+            if isinstance(stat, HistogramData):
+                histogram = wandb.Histogram(np_histogram=(stat.counts, stat.bins))
+                logging_dict[f"params/{stat_name}"] = histogram
+                continue
 
-        dist_prefix = "params/module_dist"
-        for module_name, histogram_data in param_stats["dist"].items():
-            histogram = wandb.Histogram(np_histogram=(histogram_data.counts, histogram_data.bins))
-            logging_dict[f"{dist_prefix}/{module_name}"] = histogram
+            logging_dict[f"params/{stat_name}"] = stat
 
         wandb.log(logging_dict, step=global_step, commit=False)
