@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 EXTRACTORS: dict[ExtractionType, Extractor] = {
     ExtractionType.MODULE_NORM: lambda param: param.detach().norm().item(),
+    ExtractionType.PARAM_MEAN: lambda param: param.detach().mean().item(),
     ExtractionType.PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(param.detach().cpu().numpy()),
     ExtractionType.NORM_DIST_ALONG_LAST_DIM: lambda param: HistogramData.from_array(param.detach().norm(dim=-1).cpu().numpy())
 }

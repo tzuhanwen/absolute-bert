@@ -108,6 +108,14 @@ def run_benchmarks_and_log(tag: str, epoch_num: int | None = None):
         ]
         wandb_logger.log_beir_metrics_without_commit(metrics, global_step, corpus_name, epoch_num)
 
+def log_params():
+    with log_step(step=global_step, tag="params"):
+        param_stats = param_extractor.extract_stats()
+        wandb_logger.log_param_stats_without_commit(
+            param_stats,
+            global_step,
+        )
+
 
 # %% train start
 logger.info("train start")
@@ -115,6 +123,7 @@ logger.info("train start")
 global_step = 0
 
 model.eval()
+log_params()
 run_benchmarks_and_log("global_step 0")
 
 for epoch_num in range(config.train.num_epochs):
@@ -138,56 +147,47 @@ for epoch_num in range(config.train.num_epochs):
         # loss.backward()
         # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
 
+
+
         final_loss.backward()
-        optimizer.step()
         global_step += 1
+        optimizer.step()
         scheduler.step()
 
-        if global_step % config.logging.val.every_n_steps == 0:
-            with log_step(step=global_step, tag="val"):
-                model.eval()
-
-                with torch.no_grad():
+        model.eval()
+        with torch.no_grad():
+            if global_step % config.logging.val.every_n_steps == 0:
+                with log_step(step=global_step, tag="val"):
                     val_bar = tqdm(val_loader, leave=False)
                     for batch in val_bar:
                         inputs = EncoderInputsWithLabels.from_mapping(batch.to(device))
                         predicts, labels = model(inputs)
                         loss = loss_fn(predicts, labels)
                         _, loss_dict = format_losses(loss, clip_value=config.train.clip_loss)
-
-                        batch_size = labels.size(0)
-                        averager.update(loss_dict, batch_size)
+                        averager.update(loss_dict, batch_size=labels.size(0))
 
                         val_bar.set_postfix(loss_dict)
 
                     avg_losses = averager.compute()
 
-                wandb_logger.log_dict_without_commit(
-                    {f"val/{k}": v for k, v in avg_losses.items()},
-                    global_step,
-                )
+                    wandb_logger.log_dict_without_commit(
+                        {f"val/{k}": v for k, v in avg_losses.items()},
+                        global_step,
+                    )
                 averager.reset()
 
-        if global_step % config.logging.params.every_n_steps == 0:
-            with log_step(step=global_step, tag="params"):
-                model.eval()
-                param_stats = param_extractor.extract_stats()
-                wandb_logger.log_param_stats_without_commit(
-                    param_stats,
-                    global_step,
-                )
+            if global_step % config.logging.params.every_n_steps == 0:
+                log_params()
 
-        if global_step % config.logging.ir.every_n_steps == 0:
-            model.eval()
-            run_benchmarks_and_log("beir")
+            if global_step % config.logging.ir.every_n_steps == 0:
+                run_benchmarks_and_log("beir")
 
-        # del batch, loss
-
-        if (config.train.max_steps > 0) and (global_step > config.train.max_steps):
-            break
+            if (config.train.max_steps > 0) and (global_step > config.train.max_steps):
+                break
 
     model.eval()
-    run_benchmarks_and_log("beir", epoch_num)
+    with torch.no_grad():
+        run_benchmarks_and_log("beir", epoch_num)
 
 # model_artifact = wandb.Artifact(name="model",
 #   type="model",

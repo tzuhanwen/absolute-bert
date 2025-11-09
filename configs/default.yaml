@@ -25,12 +25,15 @@ logging:
       #   log_distribution: true
       -
         include:
-          - "base_model.layers.*.layer_norm*"
+          - "base_model.layers.*.layer_norm.bias"
           - "bias"
         exclude: ["*.bias"]
-        methods: ["module_norm", "param_distribution"]
+        methods: ["module_norm", "param_dist"]
       -
-        include: ["*.embedding"]
+       include: ["base_model.layers.*.layer_norm.weight"]
+       methods: ["param_mean"]
+      -
+        include: ["*.embedding*"]
         methods: ["norm_dist_along_last_dim"]
   # train: 
   #   every_n_steps: 10

@@ -1,11 +1,12 @@
-from collections.abc import Sequence
+from collections.abc import Sequence, Iterable
 from dataclasses import dataclass
-from typing import Any, Self, Iterable, TypeAlias, Callable
+from typing import Any, Self, TypeAlias, Callable
 from enum import StrEnum
 
 import numpy as np
 from numpy.typing import NDArray
 from torch.types import Tensor, Number
+
 
 @dataclass
 class HistogramData:
@@ -34,6 +35,7 @@ Extractor: TypeAlias = Callable[[Tensor], Statistic]
 
 class ExtractionType(StrEnum):
     MODULE_NORM = "module_norm"
+    PARAM_MEAN = "param_mean"
     PARAM_DISTRIBUTION = "param_dist"
     NORM_DIST_ALONG_LAST_DIM = "norm_dist_along_last_dim"
 
@@ -42,4 +44,4 @@ class ExtractionType(StrEnum):
 class ModuleExtractingRule:
     include: Sequence[str] = ()
     exclude: Sequence[str] = ()
-    methods: Iterable[ExtractionType] = ()
+    methods: Sequence[ExtractionType] = ()

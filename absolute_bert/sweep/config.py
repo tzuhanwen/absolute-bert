@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 from typing import Literal, Any, Self, Sequence
 
 from absolute_bert.base_types import Config, ConfigUnresolved, LanguageModelConfig, _ConfigBase
-from absolute_bert.extractor import ModuleExtractingRule
+from absolute_bert.extractor import ModuleExtractingRule, ExtractionType
 from absolute_bert.loss import LossForLMConfig
 from absolute_bert.model import LanguageModelType, lm_config_registry
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class WandbSession(Config):
     entity: str
     project: str
-    job_type: Literal["train", "sweep"]
+    job_type: str
     # tags: Sequence[str] = ()
     # group: str | None = None
 
@@ -100,7 +100,7 @@ class ExperimentUnresolved(_ConfigBase):
 
     @classmethod
     def from_dict(cls, d: dict[Any, Any]) -> Self:
-        type_hooks = {LanguageModelType: LanguageModelType}
+        type_hooks = {LanguageModelType: LanguageModelType, ExtractionType: ExtractionType}
         return super().from_dict(d, type_hooks=type_hooks)
 
     def resolve(self, vocab_size: int) -> ExperimentConfig:
