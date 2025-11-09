@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, fields
 from typing import Literal, Any, Self, Sequence
 
 from absolute_bert.base_types import Config, ConfigUnresolved, LanguageModelConfig, _ConfigBase
-from absolute_bert.extractor import ExtractingModuleRule
+from absolute_bert.extractor import ModuleExtractingRule
 from absolute_bert.loss import LossForLMConfig
 from absolute_bert.model import LanguageModelType, lm_config_registry
 
@@ -49,7 +49,7 @@ class Logging(Config):
 @dataclass
 class ParamLogging(Config):
     every_n_steps: int = 500
-    rules: Sequence[ExtractingModuleRule] = ()
+    rules: Sequence[ModuleExtractingRule] = ()
 
 
 @dataclass
