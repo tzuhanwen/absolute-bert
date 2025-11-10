@@ -1,0 +1,3 @@
+version_to_info:
+  '1.7': "fix: \u4E4B\u524D\u6C92\u6709\u7528\u5230 attention module \u88E1\u7684\
+    \ V\uFF0C\u88DC\u56DE\u53BB"

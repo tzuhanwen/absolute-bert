@@ -11,3 +11,4 @@ version_to_info:
   '1.5': absolute_bert/model/absolute_bert_multi_granularity.py
   '1.6': absolute_bert/model/absolute_bert_kTemperature.py
   1.6a: absolute_bert/model/absolute_bert_outputAct.py
+  '1.7': absolute_bert/model/absolute_bert/models.py
