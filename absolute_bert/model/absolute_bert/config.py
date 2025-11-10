@@ -61,7 +61,7 @@ class AbsoluteBertConfig(LanguageModelConfig):
     activation_dim: int = 3 * 512
     depth: int = 8
     log_granularity: Sequence[int] = (6, 6, 6, 6, 6, 6, 6, 6)
-    k_temperature: float = 0.5
+    k_temperature: float = 0.1
     dtype: torch.dtype = torch.float
     # embedding_initialize_method: 'rand'
     # attention_type: Absolute_global_attention

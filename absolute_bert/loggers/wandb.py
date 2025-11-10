@@ -9,7 +9,7 @@ from absolute_bert.base_types import NestedMetricDict
 class WandbLogger:
 
     def log_dict_without_commit(self, dict_: dict[Any, Any], global_step: int) -> None:
-        wandb.log(dict_, step=global_step)
+        wandb.log(dict_, step=global_step, commit=False)
 
     def log_beir_metrics_without_commit(
         self,

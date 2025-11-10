@@ -132,14 +132,12 @@ for epoch_num in range(config.train.num_epochs):
     for _batch_num, batch in enumerate(bar):
 
         model.train()
+
         optimizer.zero_grad()
         inputs = EncoderInputs.from_mapping(batch.to(device))
         predicts, labels = model(inputs)
         loss = loss_fn(predicts, labels)
         final_loss, loss_dict = format_losses(loss, clip_value=config.train.clip_loss)
-
-        if global_step % config.logging.train.every_n_steps == 0:
-            wandb.log({f"train/{k}": v for k, v in loss_dict.items()}, step=global_step)
 
         bar.set_postfix(loss_dict)
 
@@ -147,9 +145,20 @@ for epoch_num in range(config.train.num_epochs):
         # loss.backward()
         # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
 
-
-
         final_loss.backward()
+
+        if global_step % config.logging.train.every_n_steps == 0:
+            gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
+            wandb.log(
+                {f"train/{k}": v for k, v in loss_dict.items()} | { 
+                    "train/gradient_norm": gn,
+                    # "train/optimizer_state": optimizer.state,
+                    "train/lr": optimizer.param_groups[0]["lr"],
+                }, 
+                step=global_step, 
+                commit=False
+            )
+
         global_step += 1
         optimizer.step()
         scheduler.step()
