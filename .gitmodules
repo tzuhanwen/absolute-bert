@@ -1,0 +1,4 @@
+[submodule "tools/relic"]
+	path = tools/relic
+	url = https://github.com/tzuhanwen/relic.git
+	branch = dev

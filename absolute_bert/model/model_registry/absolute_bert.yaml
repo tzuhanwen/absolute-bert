@@ -1,5 +1,14 @@
 record_ordering: newest_first
 records:
+- latest_available_commit: 481c57e0df3d338cab197b394f99c90daf73901f
+  latest_site: absolute_bert/model/absolute_bert/models.py
+  notes: "fix: \u4E4B\u524D\u6C92\u6709\u7528\u5230 attention module \u88E1\u7684\
+    \ V\uFF0C\u88DC\u56DE\u53BB"
+  registered_commit: 481c57e0df3d338cab197b394f99c90daf73901f
+  registered_relic_fingerprint: f5896a41f8189935b5c3bab297181befcbbf8ae4
+  registered_site: absolute_bert/model/absolute_bert/models.py
+  relic_version: '1.7'
+  timestamp: '2025-11-10T21:00:14.088056'
 - latest_available_commit: 82980903f53aac497066a76d2037a1aadf55d08a
   latest_site: absolute_bert/model/absolute_bert_outputAct.py
   notes: null

@@ -20,11 +20,13 @@ datasets = "^4.3.0"
 torch = { version = ">=2.4,<2.6", optional = true }
 beir = { version = "^1.0.0", optional = true }
 wandb = { version = "^0.16", optional = true }
+relic = { path = "tools/relic", extras = ["cli"], optional = true }
 
 [tool.poetry.extras]
 gpu = ["torch"]
 benchmark = ["beir", "faiss-cpu", "tqdm"]
-sweep = ["gpu", "beir", "faiss-cpu", "tqdm", "wandb"]
+sweep = ["beir", "faiss-cpu", "tqdm", "wandb"]
+tools = ["relic"]
 
 [tool.poetry.scripts]
 test-sweep-setup = "scripts.test_sweep_setup:main"
@@ -64,7 +66,7 @@ ignore_missing_imports = true
 
 [tool.relic]
 zones = ["absolute_bert/model"]
-# default_station = "model_registry"
+default_station = "model_registry"
 # default_depth = 0
 debug = false
 
