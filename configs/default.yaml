@@ -8,7 +8,7 @@ train:
   max_steps: 30000
 # model_params:
 #   dims: 512
-batch_sizes:
+micro_batch_sizes:
   train: 48
   val: 128
   ir: 32
