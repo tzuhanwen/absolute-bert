@@ -32,10 +32,11 @@ class TrainingArgs(Config):
     val_ratio: float = 0.1
     max_steps: int = -1
     clip_loss: float = 50
+    accum_steps: int = 4
 
 
 @dataclass
-class BatchSizes(Config):
+class MicroBatchSizes(Config):
     train: int
     val: int
     ir: int
@@ -80,7 +81,7 @@ class ExperimentConfig(Config):
     wandb: WandbSession
     model: LanguageModelConfig
     train: TrainingArgs
-    batch_sizes: BatchSizes
+    micro_batch_sizes: MicroBatchSizes
     loss: LossForLMConfig
     optimizer: OptimizerConfig
     scheduler: SchedulerConfig
@@ -92,7 +93,7 @@ class ExperimentUnresolved(_ConfigBase):
     model: LanguageModelUnresolved = field(default_factory=LanguageModelUnresolved)
     wandb: WandbSession = field(default_factory=WandbSession)
     train: TrainingArgs = field(default_factory=TrainingArgs)
-    batch_sizes: BatchSizes = field(default_factory=BatchSizes)
+    micro_batch_sizes: MicroBatchSizes = field(default_factory=MicroBatchSizes)
     loss: LossForLMConfig = field(default_factory=LossForLMConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     scheduler: SchedulerUnresolved = field(default_factory=SchedulerUnresolved)

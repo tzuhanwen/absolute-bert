@@ -65,9 +65,9 @@ collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer, mlm=True, mlm_probability=config.train.masking_probability
 )
 train_loader = DataLoader(
-    datadict["train"], batch_size=config.batch_sizes.train, collate_fn=collator
+    datadict["train"], batch_size=config.micro_batch_sizes.train, collate_fn=collator
 )
-val_loader = DataLoader(datadict["test"], batch_size=config.batch_sizes.val, collate_fn=collator)
+val_loader = DataLoader(datadict["test"], batch_size=config.micro_batch_sizes.val, collate_fn=collator)
 
 # %% preparing train process
 logger.info("preparing train process")
@@ -82,7 +82,8 @@ logger.info(f"using model `{repr(model)}`")
 loss_fn = CrossEntropy(model, config.loss)
 optimizer = make_adamw(model, config=config.optimizer)
 update_ratio_tracker = UpdateRatioTracker(model, optimizer)
-scheduler = make_scheduler(optimizer, num_batches=len(train_loader), config=config.scheduler)
+effective_num_batches = int(len(train_loader) / config.train.accum_steps)
+scheduler = make_scheduler(optimizer, effective_num_batches=effective_num_batches, config=config.scheduler)
 averager = MultiLossAverager()
 
 # %% evaluation setup
@@ -101,8 +102,8 @@ wandb_logger = WandbLogger()
 
 def run_benchmarks_and_log(tag: str, epoch_num: int | None = None):
     with log_step(step=global_step, tag=tag):
-        output_metrics = benchmark.run(model_output_encoder, config.batch_sizes.ir)
-        static_embeddings_metrics = benchmark.run(static_embedding_encoder, config.batch_sizes.ir)
+        output_metrics = benchmark.run(model_output_encoder, config.micro_batch_sizes.ir)
+        static_embeddings_metrics = benchmark.run(static_embedding_encoder, config.micro_batch_sizes.ir)
         metrics = [
             ("model_output", output_metrics),
             ("static_embeddings", static_embeddings_metrics),
@@ -130,47 +131,44 @@ run_benchmarks_and_log("global_step 0")
 for epoch_num in range(config.train.num_epochs):
 
     bar = tqdm(train_loader)
-    for _batch_num, batch in enumerate(bar):
+    for _micro_batch_num, micro_batch in enumerate(bar):
 
         model.train()
 
         optimizer.zero_grad()
-        inputs = EncoderInputs.from_mapping(batch.to(device))
+        inputs = EncoderInputs.from_mapping(micro_batch.to(device))
         predicts, labels = model(inputs)
         loss = loss_fn(predicts, labels)
         final_loss, loss_dict = format_losses(loss, clip_value=config.train.clip_loss)
 
         bar.set_postfix(loss_dict)
 
-        # with torch.autograd.detect_anomaly(True):
-        # loss.backward()
-        # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
-
-        final_loss.backward()
+        (final_loss / config.train.accum_steps).backward()
         global_step += 1
 
-        if global_step % config.logging.train.every_n_steps == 0:
-            gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
-            with update_ratio_tracker.track():
-                optimizer.step()
-            wandb.log(
-                {f"train/{k}": v for k, v in loss_dict.items()} | {
-                    f"train/update_ratio": update_ratio_tracker.ratio,
-                    "train/gradient_norm": gn,
-                    "train/lr": optimizer.param_groups[0]["lr"],
-                }, 
-                step=global_step, 
-                commit=False
-            )
+        if global_step % config.train.accum_steps == 0:
+            if global_step % (config.logging.train.every_n_steps * config.train.accum_steps) == 0:
+                gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
+                with update_ratio_tracker.track():
+                    optimizer.step()
+                wandb.log(
+                    {f"train/{k}": v for k, v in loss_dict.items()} | {
+                        f"train/update_ratio": update_ratio_tracker.ratio,
+                        "train/gradient_norm": gn,
+                        "train/lr": optimizer.param_groups[0]["lr"],
+                    }, 
+                    step=global_step, 
+                    commit=False
+                )
 
-        else:
-            optimizer.step()
+            else:
+                optimizer.step()
         
-        scheduler.step()
+            scheduler.step()
 
         model.eval()
         with torch.no_grad():
-            if global_step % config.logging.val.every_n_steps == 0:
+            if global_step % (config.logging.val.every_n_steps * config.train.accum_steps) == 0:
                 with log_step(step=global_step, tag="val"):
                     val_bar = tqdm(val_loader, leave=False)
                     for batch in val_bar:
@@ -190,10 +188,10 @@ for epoch_num in range(config.train.num_epochs):
                     )
                 averager.reset()
 
-            if global_step % config.logging.params.every_n_steps == 0:
+            if global_step % (config.logging.params.every_n_steps * config.train.accum_steps) == 0:
                 log_params()
 
-            if global_step % config.logging.ir.every_n_steps == 0:
+            if global_step % (config.logging.ir.every_n_steps * config.train.accum_steps) == 0:
                 run_benchmarks_and_log("beir")
 
             if (config.train.max_steps > 0) and (global_step > config.train.max_steps):

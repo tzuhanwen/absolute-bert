@@ -37,13 +37,13 @@ GETTERS: dict[str, OptimizerGetter] = {
 }
 
 
-def make_scheduler(optimizer, num_batches: int, config: SchedulerConfig) -> LRScheduler:
-    logger.debug(f"make_scheduler, {optimizer=}, {num_batches=}, {config=}")
+def make_scheduler(optimizer, effective_num_batches: int, config: SchedulerConfig) -> LRScheduler:
+    logger.debug(f"make_scheduler, {optimizer=}, {effective_num_batches=}, {config=}")
 
     scheduler = GETTERS[config.type](
         optimizer,
-        num_warmup_steps=int(num_batches * config.num_epochs * config.warmup_ratio),
-        num_training_steps=num_batches * config.num_epochs,
+        num_warmup_steps=int(effective_num_batches * config.num_epochs * config.warmup_ratio),
+        num_training_steps=effective_num_batches * config.num_epochs,
     )
     
     return scheduler
