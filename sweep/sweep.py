@@ -18,13 +18,13 @@ from absolute_bert.bi_encoder import EncoderEmbeddingPool, EncoderOutputPool
 from absolute_bert.extractor import ModuleParamStatsExtractor
 from absolute_bert.loggers import WandbLogger
 from absolute_bert.utils import init_logging
-
 from absolute_bert.sweep import setup
 from absolute_bert.sweep.evaluate import BeirBenchmark
 from absolute_bert.sweep.optimizer import make_adamw
 from absolute_bert.sweep.scheduler import make_scheduler
 from absolute_bert.sweep.train import MultiLossAverager, format_losses
 from absolute_bert.sweep.utils import log_step
+from absolute_bert.tracker import UpdateRatioTracker
 
 if __name__ == "__main__":
     init_logging()
@@ -81,6 +81,7 @@ logger.info(f"using model `{repr(model)}`")
 
 loss_fn = CrossEntropy(model, config.loss)
 optimizer = make_adamw(model, config=config.optimizer)
+update_ratio_tracker = UpdateRatioTracker(model, optimizer)
 scheduler = make_scheduler(optimizer, num_batches=len(train_loader), config=config.scheduler)
 averager = MultiLossAverager()
 
@@ -160,7 +161,16 @@ for epoch_num in range(config.train.num_epochs):
             )
 
         global_step += 1
-        optimizer.step()
+        if global_step % config.logging.val.every_n_steps == 0: 
+            with update_ratio_tracker.track():
+                optimizer.step()
+                wandb_logger.log_dict_without_commit(
+                        {f"train/update_ratio": update_ratio_tracker.ratio},
+                        global_step,
+                    )
+        else:
+            optimizer.step()
+        
         scheduler.step()
 
         model.eval()

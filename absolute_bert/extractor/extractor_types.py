@@ -20,7 +20,7 @@ class HistogramData:
     def from_array(cls, array: NDArray[Any], bins: int = 50) -> Self:
         seq = array.reshape(-1)
         counts, bin_edges = np.histogram(seq, bins=bins)
-        return HistogramData(
+        return cls(
             bins=bin_edges.tolist(),
             counts=counts.tolist(),
             min=float(seq.min()),

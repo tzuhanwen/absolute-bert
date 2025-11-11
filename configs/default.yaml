@@ -16,6 +16,7 @@ optimizer:
   lr: 2e-6
 scheduler:
   warm_ratio: 0.07
+  type: "no_op"
 logging:
   params:
     every_n_steps: 500

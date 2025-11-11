@@ -24,6 +24,7 @@ NestedMetricDict: TypeAlias = dict[str, dict[int, float]]
 EncoderOutputT = TypeVar("EncoderOutputT")
 
 
+@dataclass
 class _ConfigBase:
 
     @classmethod
@@ -41,8 +42,10 @@ class _ConfigBase:
         return asdict(self)
 
 
+@dataclass
 class Config(_ConfigBase):
     pass
+
 
 LanguageModelConfig: TypeAlias = Config
 
@@ -114,7 +117,10 @@ class EncoderInputs(EncoderInputsBase):
 
 class Encoder(Protocol[EncoderOutputT]):
 
-    @abstractmethod
+    def train(self, mode: bool = True) -> Self: ...
+
+    def eval(self) -> None: ...
+
     def forward(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...
 
     def __call__(self, inputs: EncoderInputsBase) -> EncoderOutputT: ...

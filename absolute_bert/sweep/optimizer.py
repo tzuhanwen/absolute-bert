@@ -14,6 +14,7 @@ class OptimizerConfig(Config):
     lr: float = 1e-4
     no_decay: tuple[str, ...] = ("bias", "layer_norm.weight")
     weight_decay: float = 0.01
+    betas: tuple[float, float] = (0.9, 0.998)
 
 
 ParamName: TypeAlias = str
@@ -59,6 +60,7 @@ def make_adamw(model: nn.Module, config: OptimizerConfig):
     optimizer = optim.AdamW(
         [group.to_optimizer_group() for group in param_group_config], 
         lr=config.lr,
+        betas=config.betas
     )
     logger.info(f"{optimizer=}")
     

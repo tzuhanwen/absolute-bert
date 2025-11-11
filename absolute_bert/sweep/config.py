@@ -99,9 +99,11 @@ class ExperimentUnresolved(_ConfigBase):
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     @classmethod
-    def from_dict(cls, d: dict[Any, Any]) -> Self:
-        type_hooks = {LanguageModelType: LanguageModelType, ExtractionType: ExtractionType}
-        return super().from_dict(d, type_hooks=type_hooks)
+    def from_dict(cls, d: dict[Any, Any], type_hooks: dict[Any, Any] | None = None) -> Self:
+        if type_hooks is None:
+            type_hooks = {}
+        all_type_hooks = type_hooks | {LanguageModelType: LanguageModelType, ExtractionType: ExtractionType}
+        return super().from_dict(d, type_hooks=all_type_hooks)
 
     def resolve(self, vocab_size: int) -> ExperimentConfig:
         configs = {}
