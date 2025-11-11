@@ -41,7 +41,7 @@ class BatchSizes(Config):
     ir: int
 
 
-@dataclass(frozen=True)
+@dataclass
 class Logging(Config):
     every_n_steps: int
 
@@ -55,14 +55,14 @@ class ParamLogging(Config):
 @dataclass
 class LoggingConfig(Config):
     params: ParamLogging = field(default_factory=ParamLogging)
-    train: Logging = field(default=Logging(10))
-    val: Logging = field(default=Logging(500))
-    ir: Logging = field(default=Logging(2000))
+    train: Logging = field(default_factory=lambda: Logging(10))
+    val: Logging = field(default_factory=lambda: Logging(500))
+    ir: Logging = field(default_factory=lambda: Logging(2000))
 
 
 @dataclass
 class SchedulerUnresolved(ConfigUnresolved[SchedulerConfig]):
-    type: Literal["cosine", "linear"] | None = None
+    type: Literal["cosine", "linear", "no_op"] | None = None
     warmup_ratio: float | None = None
 
 

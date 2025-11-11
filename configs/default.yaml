@@ -13,7 +13,7 @@ batch_sizes:
   val: 128
   ir: 32
 optimizer:
-  lr: 2e-6
+  lr: 4e-6
 scheduler:
   warm_ratio: 0.07
   type: "no_op"
@@ -36,7 +36,7 @@ logging:
        include: ["base_model.layers.*.layer_norm.weight"]
        methods: ["param_mean"]
       -
-        include: ["*.embedding*"]
+        include: ["*.embedding*", "*.Q.weight", "*.K.weight", "*.V.weight"]
         methods: ["norm_dist_along_last_dim"]
   # train: 
   #   every_n_steps: 10

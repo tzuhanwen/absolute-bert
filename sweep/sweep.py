@@ -147,27 +147,22 @@ for epoch_num in range(config.train.num_epochs):
         # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
 
         final_loss.backward()
+        global_step += 1
 
         if global_step % config.logging.train.every_n_steps == 0:
             gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
+            with update_ratio_tracker.track():
+                optimizer.step()
             wandb.log(
-                {f"train/{k}": v for k, v in loss_dict.items()} | { 
+                {f"train/{k}": v for k, v in loss_dict.items()} | {
+                    f"train/update_ratio": update_ratio_tracker.ratio,
                     "train/gradient_norm": gn,
-                    # "train/optimizer_state": optimizer.state,
                     "train/lr": optimizer.param_groups[0]["lr"],
                 }, 
                 step=global_step, 
                 commit=False
             )
 
-        global_step += 1
-        if global_step % config.logging.val.every_n_steps == 0: 
-            with update_ratio_tracker.track():
-                optimizer.step()
-                wandb_logger.log_dict_without_commit(
-                        {f"train/update_ratio": update_ratio_tracker.ratio},
-                        global_step,
-                    )
         else:
             optimizer.step()
         

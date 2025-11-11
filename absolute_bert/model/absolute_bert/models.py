@@ -91,7 +91,7 @@ class AbsoluteAttention(nn.Module):
 
         time_delta: Float[Tensor, "T 1 1"] = word_positions[:, None, None]
         if with_time_delta:
-            time_delta = time_delta + self.head_time_delta[None, :, None]  # "T H 1"
+            time_delta: Float[Tensor, "T H 1"]  = time_delta + self.head_time_delta[None, :, None]
 
         time_angles: Float[Tensor, "T H Dt"] = time_delta * self.time_angle
 
