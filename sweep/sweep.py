@@ -147,7 +147,7 @@ for epoch_num in range(config.train.num_epochs):
         global_step += 1
 
         if global_step % config.train.accum_steps == 0:
-            if global_step % (config.logging.train.every_n_steps * config.train.accum_steps) == 0:
+            if global_step % (config.logging.train.every_n_effective_steps * config.train.accum_steps) == 0:
                 gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
                 with update_ratio_tracker.track():
                     optimizer.step()
@@ -168,7 +168,7 @@ for epoch_num in range(config.train.num_epochs):
 
         model.eval()
         with torch.no_grad():
-            if global_step % (config.logging.val.every_n_steps * config.train.accum_steps) == 0:
+            if global_step % (config.logging.val.every_n_steps) == 0:
                 with log_step(step=global_step, tag="val"):
                     val_bar = tqdm(val_loader, leave=False)
                     for batch in val_bar:
@@ -188,10 +188,10 @@ for epoch_num in range(config.train.num_epochs):
                     )
                 averager.reset()
 
-            if global_step % (config.logging.params.every_n_steps * config.train.accum_steps) == 0:
+            if global_step % (config.logging.params.every_n_steps) == 0:
                 log_params()
 
-            if global_step % (config.logging.ir.every_n_steps * config.train.accum_steps) == 0:
+            if global_step % (config.logging.ir.every_n_steps) == 0:
                 run_benchmarks_and_log("beir")
 
             if (config.train.max_steps > 0) and (global_step > config.train.max_steps):

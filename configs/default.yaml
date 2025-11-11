@@ -39,8 +39,8 @@ logging:
         include: ["*.embedding*", "*.Q.weight", "*.K.weight", "*.V.weight"]
         methods: ["norm_dist_along_last_dim"]
   # train: 
-  #   every_n_steps: 10
+  #   every_n_effective_steps: 5
   # val:
   #   every_n_steps: 500
-  # if:
+  # ir:
   #   every_n_steps: 2000

@@ -48,6 +48,11 @@ class Logging(Config):
 
 
 @dataclass
+class EffectiveLogging(Config):
+    every_n_effective_steps: int
+
+
+@dataclass
 class ParamLogging(Config):
     every_n_steps: int = 500
     rules: Sequence[ModuleExtractingRule] = ()
@@ -56,7 +61,7 @@ class ParamLogging(Config):
 @dataclass
 class LoggingConfig(Config):
     params: ParamLogging = field(default_factory=ParamLogging)
-    train: Logging = field(default_factory=lambda: Logging(10))
+    train: Logging = field(default_factory=lambda: EffectiveLogging(5))
     val: Logging = field(default_factory=lambda: Logging(500))
     ir: Logging = field(default_factory=lambda: Logging(2000))
 
