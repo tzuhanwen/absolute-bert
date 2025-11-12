@@ -16,11 +16,17 @@ ModuleName: TypeAlias = str
 logger = logging.getLogger(__name__)
 
 
+def get_histogram(array: np.ndarray) -> HistogramData:
+    logger.info(f"{array.min(), array.max()}")
+    return HistogramData.from_array(array)
+
+
 EXTRACTORS: dict[ExtractionType, Extractor] = {
     ExtractionType.MODULE_NORM: lambda param: param.detach().norm().item(),
     ExtractionType.PARAM_MEAN: lambda param: param.detach().mean().item(),
-    ExtractionType.PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(param.detach().cpu().numpy()),
-    ExtractionType.LOG_PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(np.log(param.detach().cpu().numpy())),
+    # ExtractionType.PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(param.detach().cpu().numpy()),
+    ExtractionType.PARAM_DISTRIBUTION: lambda param: get_histogram(param.detach().cpu().numpy()),
+    ExtractionType.LOG_PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(np.log10(param.detach().cpu().numpy())),
     ExtractionType.NORM_DIST_ALONG_LAST_DIM: lambda param: HistogramData.from_array(param.detach().norm(dim=-1).cpu().numpy())
 }
 
@@ -96,7 +102,8 @@ class ModuleParamStatsExtractor:
         stats = {}
 
         for (module_name, log_type), param in self.resolved_logging_name_type_pairs.items():
-
+            if log_type == ExtractionType.PARAM_DISTRIBUTION:
+                logger.info(f"logging `{log_type}/{module_name}`")
             stats[f"{log_type}/{module_name}"] = EXTRACTORS[log_type](param)
 
         return stats
