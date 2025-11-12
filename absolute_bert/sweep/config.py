@@ -61,7 +61,7 @@ class ParamLogging(Config):
 @dataclass
 class LoggingConfig(Config):
     params: ParamLogging = field(default_factory=ParamLogging)
-    train: Logging = field(default_factory=lambda: EffectiveLogging(5))
+    train: EffectiveLogging = field(default_factory=lambda: EffectiveLogging(5))
     val: Logging = field(default_factory=lambda: Logging(500))
     ir: Logging = field(default_factory=lambda: Logging(2000))
 
