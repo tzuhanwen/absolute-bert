@@ -35,7 +35,7 @@ class AbsoluteAttention(nn.Module):
 
         # self.time_embedding = time_embedding
         self.time_angle: Float[Tensor, "H Dt"] = nn.Parameter(
-            torch.rand(config.num_heads, config.time_dim) ** 10 + 1e-8
+            torch.rand(1, config.time_dim) ** 5 + 1e-8
         )
         self.head_time_delta: Float[Tensor, "H"] = nn.Parameter(
             torch.rand(self.num_heads) ** 10 + 1e-8
