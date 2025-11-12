@@ -37,6 +37,7 @@ class ExtractionType(StrEnum):
     MODULE_NORM = "module_norm"
     PARAM_MEAN = "param_mean"
     PARAM_DISTRIBUTION = "param_dist"
+    LOG_PARAM_DISTRIBUTION = "log_param_dist"
     NORM_DIST_ALONG_LAST_DIM = "norm_dist_along_last_dim"
 
 

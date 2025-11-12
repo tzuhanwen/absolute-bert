@@ -5,6 +5,8 @@ from typing import TypeAlias
 from torch.nn import Module, Parameter
 from torch.types import Number
 
+import numpy as np
+
 from ._module_name_resolver import ModuleNameResolver
 from .extractor_types import HistogramData, ModuleExtractingRule, ExtractionType, Extractor
 
@@ -18,6 +20,7 @@ EXTRACTORS: dict[ExtractionType, Extractor] = {
     ExtractionType.MODULE_NORM: lambda param: param.detach().norm().item(),
     ExtractionType.PARAM_MEAN: lambda param: param.detach().mean().item(),
     ExtractionType.PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(param.detach().cpu().numpy()),
+    ExtractionType.LOG_PARAM_DISTRIBUTION: lambda param: HistogramData.from_array(np.log(param.detach().cpu().numpy())),
     ExtractionType.NORM_DIST_ALONG_LAST_DIM: lambda param: HistogramData.from_array(param.detach().norm(dim=-1).cpu().numpy())
 }
 

@@ -20,18 +20,17 @@ scheduler:
 logging:
   params:
     every_n_steps: 500
-    rules:  # default: no rules
-      # - 
-      #   include: ["*"]  # default: []
-      #   exclude: []
-      #   log_norm: true
-      #   log_distribution: true
+    rules:
       -
         include:
           - "base_model.layers.*.layer_norm.bias"
           - "bias"
+          - "*.head_time_delta"
         exclude: ["*.bias"]
         methods: ["module_norm", "param_dist"]
+      -
+        include: ["*.time_angle"]
+        methods: ["log_param_dist"]
       -
        include: ["base_model.layers.*.layer_norm.weight"]
        methods: ["param_mean"]
