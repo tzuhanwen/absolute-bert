@@ -29,8 +29,8 @@ logging:
         exclude: ["*.bias"]
         methods: ["module_norm", "param_dist"]
       -
-        include: ["*.time_angle"]
-        methods: ["log_param_dist"]
+        include: ["*.log_time_angles"]
+        methods: ["param_dist"]
       -
        include: ["base_model.layers.*.layer_norm.weight"]
        methods: ["param_mean"]

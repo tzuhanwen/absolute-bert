@@ -33,13 +33,11 @@ class AbsoluteAttention(nn.Module):
         self.hidden_dim = config.hidden_dim
         self.num_heads = config.num_heads
 
-        # self.time_embedding = time_embedding
-        self.time_angle: Float[Tensor, "H Dt"] = nn.Parameter(
-            torch.rand(1, config.time_dim) ** 5 + 1e-8
+        b = -4.0
+        self.log_time_angles: Float[Tensor, "H Dt"] = nn.Parameter(
+            b + (torch.tensor(torch.pi).log() - b) * torch.rand(1, config.time_dim)
         )
-        self.head_time_delta: Float[Tensor, "H"] = nn.Parameter(
-            torch.rand(self.num_heads) ** 10 + 1e-8
-        )
+        self.head_time_delta: Float[Tensor, "H"] = nn.Parameter(torch.rand(self.num_heads))
 
         self.Q = nn.Linear(config.dim, config.num_heads * config.hidden_dim, bias=False)
         self.K = nn.Linear(config.dim, config.num_heads * config.hidden_dim)
@@ -65,7 +63,7 @@ class AbsoluteAttention(nn.Module):
 
         q_attentioned: Float[Tensor, "B T T H"] = self._get_q_attentioned(states, attention_mask)
         kv: Hiddens = self._get_kv(states, attention_mask)
-        
+
         loading: Hiddens = torch.einsum("btlh,blhd->bthd", q_attentioned, kv)
         loading_flat: Float[Tensor, "B T H_Dh"] = loading.reshape(*batch_length, self.dim)
 
@@ -74,7 +72,9 @@ class AbsoluteAttention(nn.Module):
 
         return intermediate
 
-    def _get_q_attentioned(self, states: States, attention_mask: Int[Tensor, "B T"]) -> Float[Tensor, "B T T H"]:
+    def _get_q_attentioned(
+        self, states: States, attention_mask: Int[Tensor, "B T"]
+    ) -> Float[Tensor, "B T T H"]:
         batch_length = states.shape[:2]
 
         q_flat: Float[Tensor, "B T H_Dh"] = self.Q(states) - self.q_bias.exp()
@@ -92,12 +92,11 @@ class AbsoluteAttention(nn.Module):
 
     def _get_time(self, length: int, with_time_delta: bool) -> Float[Tensor, "T H 2*Dt"]:
         word_positions: Int[Tensor, "T"] = torch.arange(length).to(self.head_time_delta.device)
-
         time_delta: Float[Tensor, "T 1 1"] = word_positions[:, None, None]
         if with_time_delta:
-            time_delta: Float[Tensor, "T H 1"]  = time_delta + self.head_time_delta[None, :, None]
+            time_delta: Float[Tensor, "T H 1"] = time_delta + self.head_time_delta[None, :, None]
 
-        time_angles: Float[Tensor, "T H Dt"] = time_delta * self.time_angle
+        time_angles: Float[Tensor, "T H Dt"] = time_delta * self.log_time_angles.exp()
 
         cosines, sines = time_angles.cos(), time_angles.sin()
         time: Float[Tensor, "T H 2*Dt"] = torch.cat(
@@ -105,7 +104,7 @@ class AbsoluteAttention(nn.Module):
         ) / np.sqrt(self.hidden_dim)
 
         return time
-    
+
     def _get_kv(self, states: States, attention_mask: Int[Tensor, "B T"]) -> Hiddens:
         batch_length = states.shape[:2]
 
@@ -185,7 +184,7 @@ class AbsoluteBert(nn.Module):
             states = layer(states, inputs.attention_mask)
 
         return states
-    
+
     @property
     def embed(self) -> nn.Embedding:
         return self.embedding
