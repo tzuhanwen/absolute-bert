@@ -54,11 +54,11 @@ class WandbLogger:
 
             for file_name, content in files.items():
                 (path / file_name).write_text(content)
-                
+
             artifact = wandb.Artifact(
-                name=category_name,
-                type="log",
-                metadata={"global_step": global_step}
+                name=f"{category_name}-{wandb.run.id}",
+                type=category_name,
+                metadata={"global_step": global_step},
             )
             artifact.add_dir(path)
             wandb.log_artifact(artifact, aliases=[f"step_{global_step}", "latest"])

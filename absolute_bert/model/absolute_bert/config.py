@@ -13,6 +13,7 @@ class AbsoluteAttentionConfig(Config):
     num_heads: int
     hidden_dim: int
     time_dim: int
+    q_temperature: float
     k_temperature: float
 
     def __post_init__(self) -> None:
@@ -34,6 +35,7 @@ class AbsoluteBertLayerConfig(Config):
     num_heads: int
     hidden_dim: int
     time_dim: int
+    q_temperature: float
     k_temperature: float
     activation_dim: int
 
@@ -43,6 +45,7 @@ class AbsoluteBertLayerConfig(Config):
             num_heads=self.num_heads,
             hidden_dim=self.hidden_dim,
             time_dim=self.time_dim,
+            q_temperature=self.q_temperature,
             k_temperature=self.k_temperature,
         )
 
@@ -61,7 +64,8 @@ class AbsoluteBertConfig(LanguageModelConfig):
     activation_dim: int = 3 * 512
     depth: int = 8
     log_granularity: Sequence[int] = (6, 6, 6, 6, 6, 6, 6, 6)
-    k_temperature: float = 0.1
+    q_temperature: float = 0.5
+    k_temperature: float = 0.5
     dtype: torch.dtype = torch.float
     # embedding_initialize_method: 'rand'
     # attention_type: Absolute_global_attention
@@ -77,6 +81,7 @@ class AbsoluteBertConfig(LanguageModelConfig):
                 num_heads=self.dim // (2**gran),
                 hidden_dim=2**gran,
                 time_dim=self.time_dim,
+                q_temperature=self.q_temperature,
                 k_temperature=self.k_temperature,
                 activation_dim=self.activation_dim,
             )

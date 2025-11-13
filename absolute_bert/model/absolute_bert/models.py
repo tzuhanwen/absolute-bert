@@ -47,6 +47,7 @@ class AbsoluteAttention(nn.Module):
         self.q_bias: Float[Tensor, "H_Dh"] = nn.Parameter(
             torch.zeros(config.num_heads * config.hidden_dim)
         )
+        self.q_temperature = config.q_temperature
         self.k_temperature = config.k_temperature
 
         with torch.no_grad():
@@ -80,10 +81,11 @@ class AbsoluteAttention(nn.Module):
         q_flat: Float[Tensor, "B T H_Dh"] = self.Q(states) - self.q_bias.exp()
         q: Hiddens = q_flat.view(*batch_length, self.num_heads, self.hidden_dim)
         # q = (q + attention_mask[..., None, None])
-        q = (q.sigmoid() / self.hidden_dim) * attention_mask[..., None, None]
+        q_masked = (q / self.q_temperature) * attention_mask[..., None, None]
+        q_softmax = q_masked.softmax(dim=-1)
 
         time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], True)
-        q_timed: Float[Tensor, "B T H 2*Dt"] = q.sum(-1, keepdim=True) * time
+        q_timed: Float[Tensor, "B T H 2*Dt"] = q_softmax.sum(-1, keepdim=True) * time
 
         k_time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], False)
         q_attentioned: Float[Tensor, "B T T H"] = torch.einsum("bthd,lhd->btlh", q_timed, k_time)
