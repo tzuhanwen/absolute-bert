@@ -130,8 +130,12 @@ def log_params():
 
 def log_semantic_summary():
     with log_step(step=global_step, tag="semantic_summary"):
-        files = get_absolute_bert_semantic_summary(model, tokenizer)
-        wandb_logger.dump_strings(files, "semantic_summary", global_step)
+        summary = get_absolute_bert_semantic_summary(model, tokenizer)
+        wandb_logger.dump_strings(
+            {f"{layer_name}.txt": semantic for layer_name, semantic in summary}, 
+            "semantic_summary", 
+            global_step
+        )
 
 
 # %% train start
