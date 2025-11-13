@@ -16,7 +16,7 @@ ModuleName: TypeAlias = str
 logger = logging.getLogger(__name__)
 
 
-def get_histogram(array: np.ndarray) -> HistogramData:
+def get_histogram(array: np.typing.NDArray) -> HistogramData:
     logger.info(f"{array.min(), array.max()}")
     return HistogramData.from_array(array)
 
@@ -103,7 +103,7 @@ class ModuleParamStatsExtractor:
 
         for (module_name, log_type), param in self.resolved_logging_name_type_pairs.items():
             if log_type == ExtractionType.PARAM_DISTRIBUTION:
-                logger.info(f"logging `{log_type}/{module_name}`")
+                logger.debug(f"logging `{log_type}/{module_name}`")
             stats[f"{log_type}/{module_name}"] = EXTRACTORS[log_type](param)
 
         return stats

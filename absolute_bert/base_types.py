@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, fields, asdict
-from typing import Any, Generic, Protocol, Self, TypeAlias, TypeVar, get_args, overload
+from typing import Annotated, Any, Generic, Protocol, Self, TypeAlias, TypeVar, get_args, overload
 
 import dacite
 from dacite.exceptions import MissingValueError
@@ -11,9 +11,11 @@ from torch import Tensor, nn
 
 logger = logging.getLogger(__name__)
 
+_Tokens: TypeAlias = list[list[str]]
 Sequences: TypeAlias = Int[Tensor, "B T"]
 Labels: TypeAlias = Sequences
 States: TypeAlias = Float[Tensor, "B T D"]
+Projection: TypeAlias = Float[Tensor, "Dh D"]
 Hiddens: TypeAlias = Float[Tensor, "B T H Dh"]
 WordBiases: TypeAlias = Float[Tensor, "V"]
 WordEmbeddings: TypeAlias = Float[Tensor, "V D"]
@@ -22,6 +24,12 @@ Encodings: TypeAlias = Mapping[str, Tensor]
 NestedMetricDict: TypeAlias = dict[str, dict[int, float]]
 
 EncoderOutputT = TypeVar("EncoderOutputT")
+
+
+class Tokens:
+    @classmethod
+    def __class_getitem__(cls, shape: str) -> Any:
+        return Annotated[_Tokens, {"shape": shape}]
 
 
 @dataclass
@@ -33,11 +41,11 @@ class _ConfigBase:
             if type_hooks is None:
                 return dacite.from_dict(cls, d)
             return dacite.from_dict(cls, d, config=dacite.Config(type_hooks=type_hooks))
-        
+
         except MissingValueError as e:
             # missing_attr = ".".join(e.field_path)
             raise ValueError(f"missing {e.field_path}") from e
-        
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -51,9 +59,10 @@ LanguageModelConfig: TypeAlias = Config
 
 configT = TypeVar("configT", bound=Config)
 
+
 @dataclass
 class ConfigUnresolved(_ConfigBase, Generic[configT]):
-    
+
     @property
     def _resolve_target(self) -> type[configT]:
         orig_bases = getattr(self, "__orig_bases__", None)
@@ -79,7 +88,7 @@ class ConfigUnresolved(_ConfigBase, Generic[configT]):
             config_entry = getattr(self, f.name)
             if config_entry is not None:
                 overrides[f.name] = config_entry
-        
+
         return overrides
 
 
@@ -146,9 +155,8 @@ class LanguageModel(Encoder[tuple[States, Sequences | None]], LanguageModelingCa
     def __call__(self, inputs: EncoderInputsBase) -> tuple[States, Labels | None]: ...
 
 
-
 class Embeddable(Protocol):
-    
+
     @property
     def embed(self) -> nn.Embedding: ...
 

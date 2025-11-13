@@ -20,6 +20,7 @@ from absolute_bert.loggers import WandbLogger
 from absolute_bert.utils import init_logging
 from absolute_bert.sweep import setup
 from absolute_bert.sweep.evaluate import BeirBenchmark
+from absolute_bert.sweep.extractors import get_absolute_bert_semantic_summary
 from absolute_bert.sweep.optimizer import make_adamw
 from absolute_bert.sweep.scheduler import make_scheduler
 from absolute_bert.sweep.train import MultiLossAverager, format_losses
@@ -67,12 +68,14 @@ collator = DataCollatorForLanguageModeling(
 train_loader = DataLoader(
     datadict["train"], batch_size=config.micro_batch_sizes.train, collate_fn=collator
 )
-val_loader = DataLoader(datadict["test"], batch_size=config.micro_batch_sizes.val, collate_fn=collator)
+val_loader = DataLoader(
+    datadict["test"], batch_size=config.micro_batch_sizes.val, collate_fn=collator
+)
 
 # %% preparing train process
 logger.info("preparing train process")
 
-#load model and test
+# load model and test
 model: LanguageModel = lm_registry[config.train.model_type](config.model).to(device)
 batch = next(iter(train_loader))
 model.forward(EncoderInputs.from_mapping(batch.to(device)))
@@ -83,7 +86,9 @@ loss_fn = CrossEntropy(model, config.loss)
 optimizer = make_adamw(model, config=config.optimizer)
 update_ratio_tracker = UpdateRatioTracker(model, optimizer)
 effective_num_batches = int(len(train_loader) / config.train.accum_steps)
-scheduler = make_scheduler(optimizer, effective_num_batches=effective_num_batches, config=config.scheduler)
+scheduler = make_scheduler(
+    optimizer, effective_num_batches=effective_num_batches, config=config.scheduler
+)
 averager = MultiLossAverager()
 
 # %% evaluation setup
@@ -100,23 +105,33 @@ logging.info(f"logging following parameter stats on named modules: {repr(logging
 
 wandb_logger = WandbLogger()
 
+
 def run_benchmarks_and_log(tag: str, epoch_num: int | None = None):
     with log_step(step=global_step, tag=tag):
         output_metrics = benchmark.run(model_output_encoder, config.micro_batch_sizes.ir)
-        static_embeddings_metrics = benchmark.run(static_embedding_encoder, config.micro_batch_sizes.ir)
+        static_embeddings_metrics = benchmark.run(
+            static_embedding_encoder, config.micro_batch_sizes.ir
+        )
         metrics = [
             ("model_output", output_metrics),
             ("static_embeddings", static_embeddings_metrics),
         ]
-        wandb_logger.log_beir_metrics_without_commit(metrics, global_step, corpus_name, epoch_num)
+        wandb_logger.log_beir_metrics(metrics, global_step, corpus_name, epoch_num)
+
 
 def log_params():
     with log_step(step=global_step, tag="params"):
         param_stats = param_extractor.extract_stats()
-        wandb_logger.log_param_stats_without_commit(
+        wandb_logger.log_param_stats(
             param_stats,
             global_step,
         )
+
+
+def log_semantic_summary():
+    with log_step(step=global_step, tag="semantic_summary"):
+        files = get_absolute_bert_semantic_summary(model, tokenizer)
+        wandb_logger.dump_strings(files, "semantic_summary", global_step)
 
 
 # %% train start
@@ -147,28 +162,33 @@ for epoch_num in range(config.train.num_epochs):
         global_step += 1
 
         if global_step % config.train.accum_steps == 0:
-            if global_step % (config.logging.train.every_n_effective_steps * config.train.accum_steps) == 0:
-                gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float('inf'))
+            if (
+                global_step
+                % (config.logging.train.every_n_effective_steps * config.train.accum_steps)
+                == 0
+            ):
+                gn = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float("inf"))
                 with update_ratio_tracker.track():
                     optimizer.step()
                 wandb.log(
-                    {f"train/{k}": v for k, v in loss_dict.items()} | {
+                    {f"train/{k}": v for k, v in loss_dict.items()}
+                    | {
                         f"train/update_ratio": update_ratio_tracker.ratio,
                         "train/gradient_norm": gn,
                         "train/lr": optimizer.param_groups[0]["lr"],
-                    }, 
-                    step=global_step, 
-                    commit=False
+                    },
+                    step=global_step,
+                    commit=False,
                 )
 
             else:
                 optimizer.step()
-        
+
             scheduler.step()
 
         model.eval()
         with torch.no_grad():
-            if global_step % (config.logging.val.every_n_steps) == 0:
+            if global_step % config.logging.val.every_n_steps == 0:
                 with log_step(step=global_step, tag="val"):
                     val_bar = tqdm(val_loader, leave=False)
                     for batch in val_bar:
@@ -182,17 +202,20 @@ for epoch_num in range(config.train.num_epochs):
 
                     avg_losses = averager.compute()
 
-                    wandb_logger.log_dict_without_commit(
+                    wandb_logger.log_dict(
                         {f"val/{k}": v for k, v in avg_losses.items()},
                         global_step,
                     )
                 averager.reset()
 
-            if global_step % (config.logging.params.every_n_steps) == 0:
+            if global_step % config.logging.params.every_n_steps == 0:
                 log_params()
 
-            if global_step % (config.logging.ir.every_n_steps) == 0:
+            if global_step % config.logging.ir.every_n_steps == 0:
                 run_benchmarks_and_log("beir")
+
+            if global_step % config.logging.semantic.every_n_steps == 0:
+                log_semantic_summary()
 
             if (config.train.max_steps > 0) and (global_step > config.train.max_steps):
                 break

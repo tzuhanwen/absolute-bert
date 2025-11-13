@@ -24,7 +24,7 @@ class WandbSession(Config):
 
 @dataclass
 class TrainingArgs(Config):
-    model_type: LanguageModelType 
+    model_type: LanguageModelType
     num_epochs: int = 1
     masking_probability: float = 0.15
     max_length: int = 256
@@ -64,6 +64,7 @@ class LoggingConfig(Config):
     train: EffectiveLogging = field(default_factory=lambda: EffectiveLogging(5))
     val: Logging = field(default_factory=lambda: Logging(500))
     ir: Logging = field(default_factory=lambda: Logging(2000))
+    semantic: Logging = field(default_factory=lambda: Logging(2000))
 
 
 @dataclass
@@ -77,7 +78,9 @@ class LanguageModelUnresolved(ConfigUnresolved[LanguageModelConfig]):
         self.kwargs = kwargs
 
     def resolve(self, model_type: LanguageModelType, vocab_size: int) -> LanguageModelConfig:
-        logger.debug(f"start of LanguageModelUnresolved.resolve, {model_type=}, {lm_config_registry=}")
+        logger.debug(
+            f"start of LanguageModelUnresolved.resolve, {model_type=}, {lm_config_registry=}"
+        )
         return lm_config_registry[model_type](**self.kwargs | {"vocab_size": vocab_size})
 
 
@@ -108,7 +111,10 @@ class ExperimentUnresolved(_ConfigBase):
     def from_dict(cls, d: dict[Any, Any], type_hooks: dict[Any, Any] | None = None) -> Self:
         if type_hooks is None:
             type_hooks = {}
-        all_type_hooks = type_hooks | {LanguageModelType: LanguageModelType, ExtractionType: ExtractionType}
+        all_type_hooks = type_hooks | {
+            LanguageModelType: LanguageModelType,
+            ExtractionType: ExtractionType,
+        }
         return super().from_dict(d, type_hooks=all_type_hooks)
 
     def resolve(self, vocab_size: int) -> ExperimentConfig:

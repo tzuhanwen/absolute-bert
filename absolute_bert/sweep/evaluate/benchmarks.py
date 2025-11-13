@@ -13,8 +13,9 @@ from beir.datasets.data_loader import GenericDataLoader
 from beir.retrieval.evaluation import EvaluateRetrieval
 from beir.retrieval.search.dense import DenseRetrievalExactSearch as DRES
 
+from absolute_bert.base_types import NestedMetricDict
 from absolute_bert.bi_encoder import BiEncoder
-from absolute_bert.formatter import NestedMetricDict, nest_a_metric_dict_tuple
+from absolute_bert.formatter.metric import nest_a_metric_dict_tuple
 
 logger = logging.getLogger(__name__)
 
