@@ -132,7 +132,7 @@ def log_semantic_summary():
     with log_step(step=global_step, tag="semantic_summary"):
         summary = get_absolute_bert_semantic_summary(model, tokenizer)
         wandb_logger.dump_strings(
-            {f"{layer_name}.txt": semantic for layer_name, semantic in summary}, 
+            {f"{layer_name}.txt": semantic for layer_name, semantic in summary.items()}, 
             "semantic_summary", 
             global_step
         )

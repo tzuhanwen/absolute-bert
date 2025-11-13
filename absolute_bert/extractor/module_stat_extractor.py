@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_histogram(array: np.typing.NDArray) -> HistogramData:
-    logger.info(f"{array.min(), array.max()}")
     return HistogramData.from_array(array)
 
 
