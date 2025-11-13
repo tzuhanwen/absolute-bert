@@ -6,7 +6,6 @@ from typing import Iterable, Any, TypeAlias
 from absolute_bert.base_types import NestedMetricDict
 from absolute_bert.extractor import HistogramData, Statistic
 from absolute_bert.formatter.metric import to_all_metrics_and_highlights
-from absolute_bert.formatter.semantic import
 
 FileName: TypeAlias = str
 FileContent: TypeAlias = str

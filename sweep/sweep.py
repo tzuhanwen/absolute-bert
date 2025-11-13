@@ -141,6 +141,7 @@ global_step = 0
 
 model.eval()
 log_params()
+log_semantic_summary()
 run_benchmarks_and_log("global_step 0")
 
 for epoch_num in range(config.train.num_epochs):

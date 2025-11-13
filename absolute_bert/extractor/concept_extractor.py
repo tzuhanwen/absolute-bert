@@ -6,7 +6,7 @@ from torch.types import Tensor
 from absolute_bert.base_types import WordEmbeddings
 
 
-def _extract_semantics(
+def _extract_concepts(
     embeddings: WordEmbeddings, vectors: Float[Tensor, "N D"], num_tops: int = 5
 ) -> Int[NDArray, "N num_tops"]:
 
@@ -16,14 +16,14 @@ def _extract_semantics(
     return tops
 
 
-def extract_multihead_semantics(
+def extract_multihead_concepts(
     embeddings: WordEmbeddings, 
     multihead: Float[Tensor, "H_Dh D"], 
     num_heads: int, 
     num_tops: int = 5,
 ) -> list[Int[NDArray, "Dh num_tops"]]:
 
-    tops: Int[NDArray, "H_Dh num_tops"] = _extract_semantics(
+    tops: Int[NDArray, "H_Dh num_tops"] = _extract_concepts(
         embeddings, multihead, num_tops=num_tops
     )
 

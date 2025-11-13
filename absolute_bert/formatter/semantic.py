@@ -18,7 +18,7 @@ def _get_concepts_width(concepts: Concepts) -> int:
 
 
 def _pad_lines(concepts_tuple: ConceptsTuple) -> ConceptsTuple:
-    num_conceptcs = [len(concepts) for concepts in concepts_tuple]
+    num_concepts = [len(concepts) for concepts in concepts_tuple]
     max_height = max(num_concepts)
     return tuple(
         concepts + [[]] * (max_height - height)

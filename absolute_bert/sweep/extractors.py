@@ -1,10 +1,11 @@
 from typing import TypeAlias
 
+from torch.types import Device
 from transformers import PreTrainedTokenizerBase
 
 from absolute_bert.model.absolute_bert.concept_extractor import extract_attention_concepts
 from absolute_bert.model.absolute_bert.models import AbsoluteBertLM
-from absolute_bert.formatter.semantic import to_semantic, SemanticStr
+from absolute_bert.formatter.semantic import to_semantic_str, SemanticStr
 
 ModuleName: TypeAlias = str
 HeadSemantic: TypeAlias = SemanticStr
@@ -13,10 +14,10 @@ NamedModuleSemantic: TypeAlias = tuple[ModuleName, ModuleSemantic]
 
 
 def _extract_absolute_bert_semantics(
-    lm: AbsoluteBertLM, tokenizer: PreTrainedTokenizerBase
+    lm: AbsoluteBertLM, tokenizer: PreTrainedTokenizerBase, device: Device = "cpu"
 ) -> list[NamedModuleSemantic]:
 
-    embeddings = lm.word_embeddings.detach()
+    embeddings = lm.word_embeddings
 
     layer_semantics: list[NamedSemantic] = []
     for layer_num, layer in enumerate(lm.base_model.layers):
@@ -37,12 +38,14 @@ LayerName: TypeAlias = str
 
 
 def get_absolute_bert_semantic_summary(
-    lm: AbsoluteBertLM, tokenizer: PreTrainedTokenizerBase#, sampling_head: int | None = None
-) -> dict[LayerName, str]
+    lm: AbsoluteBertLM, tokenizer: PreTrainedTokenizerBase, device: Device = "cpu"#, sampling_head: int | None = None
+) -> dict[LayerName, str]:
     
-    layer_semantics: list[NamedModuleSemantic] = _extract_absolute_bert_semantics(lm, tokenizer)
+    layer_semantics: list[NamedModuleSemantic] = _extract_absolute_bert_semantics(
+        lm, tokenizer, device
+    )
 
-    layer_blocks: dict{LayerName, str} = {}
+    layer_blocks: dict[LayerName, str] = {}
 
     return {
         layer_name: "\n".join(layer_semantic)

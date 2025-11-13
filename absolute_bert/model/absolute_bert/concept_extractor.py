@@ -2,10 +2,12 @@ from typing import TypeAlias
 
 import numpy as np
 from jaxtyping import Int
+from numpy.typing import NDArray
+from torch.types import Device
 from transformers import PreTrainedTokenizerBase
 
 from absolute_bert.base_types import WordEmbeddings, Tokens
-from absolute_bert.extractor import extract_multihead_semantics
+from absolute_bert.extractor import extract_multihead_concepts
 
 from .models import AbsoluteAttention
 
@@ -20,17 +22,22 @@ def _convert_ids_to_tokens(
 
 
 def extract_attention_concepts(
-    embeddings: WordEmbeddings, attention: AbsoluteAttention, tokenizer: PreTrainedTokenizerBase
+    embeddings: WordEmbeddings, 
+    attention: AbsoluteAttention, 
+    tokenizer: PreTrainedTokenizerBase, 
+    device: Device = "cpu"
 ) -> list[tuple[QHeadConcepts, KHeadConcepts]]:
 
+    embeddings = embeddings.detach().to(device)
+
     q_tops_lists: list[Int[NDArray, "Dh num_tops"]] = extract_multihead_concepts(
-        embeddings, attention.Q.weight.detach(), attention.num_heads
+        embeddings, attention.Q.weight.detach().to(device), attention.num_heads
     )
     k_tops_lists: list[Int[NDArray, "Dh num_tops"]] = extract_multihead_concepts(
-        embeddings, attention.K.weight.detach(), attention.num_heads
+        embeddings, attention.K.weight.detach().to(device), attention.num_heads
     )
 
-    q_token_lists = [_convert_ids_to_tokens(q_tops) for q_tops in q_tops_lists]
-    k_token_lists = [_convert_ids_to_tokens(k_tops) for k_tops in k_tops_lists]
+    q_token_lists = [_convert_ids_to_tokens(q_tops, tokenizer) for q_tops in q_tops_lists]
+    k_token_lists = [_convert_ids_to_tokens(k_tops, tokenizer) for k_tops in k_tops_lists]
 
     return list(zip(q_token_lists, k_token_lists, strict=True))
