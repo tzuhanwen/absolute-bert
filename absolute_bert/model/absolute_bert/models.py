@@ -33,7 +33,7 @@ class AbsoluteAttention(nn.Module):
         self.hidden_dim = config.hidden_dim
         self.num_heads = config.num_heads
 
-        b = -3.0
+        b = -4.0
         self.log_time_angles: Float[Tensor, "H Dt"] = nn.Parameter(
             b + (torch.tensor(torch.pi).log() - b) * torch.rand(1, config.time_dim)
         )
@@ -80,7 +80,7 @@ class AbsoluteAttention(nn.Module):
         q_flat: Float[Tensor, "B T H_Dh"] = self.Q(states) - self.q_bias.exp()
         q: Hiddens = q_flat.view(*batch_length, self.num_heads, self.hidden_dim)
         # q = (q + attention_mask[..., None, None])
-        q = q.sigmoid() * attention_mask[..., None, None]
+        q = (q.sigmoid() / self.hidden_dim) * attention_mask[..., None, None]
 
         time: Float[Tensor, "T H 2*Dt"] = self._get_time(batch_length[1], True)
         q_timed: Float[Tensor, "B T H 2*Dt"] = q.sum(-1, keepdim=True) * time
@@ -99,7 +99,9 @@ class AbsoluteAttention(nn.Module):
         time_angles: Float[Tensor, "T H Dt"] = time_delta * self.log_time_angles.exp()
 
         cosines, sines = time_angles.cos(), time_angles.sin()
-        time: Float[Tensor, "T H 2*Dt"] = torch.cat([cosines + sines, cosines - sines], dim=-1)
+        time: Float[Tensor, "T H 2*Dt"] = torch.cat(
+            [cosines + sines, cosines - sines], dim=-1
+        ) / np.sqrt(self.hidden_dim)
 
         return time
 
