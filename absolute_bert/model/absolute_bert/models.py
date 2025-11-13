@@ -33,6 +33,8 @@ class AbsoluteAttention(nn.Module):
         self.hidden_dim = config.hidden_dim
         self.num_heads = config.num_heads
 
+        self.layer_norm = nn.RMSNorm(config.dim)
+
         b = -4.0
         self.log_time_angles: Float[Tensor, "H Dt"] = nn.Parameter(
             b + (torch.tensor(torch.pi).log() - b) * torch.rand(1, config.time_dim)
@@ -54,24 +56,20 @@ class AbsoluteAttention(nn.Module):
             self.V.bias.copy_(torch.zeros_like(self.V.bias))
             self.O.bias.copy_(torch.zeros_like(self.O.bias))
 
-        self.dropout = nn.Dropout(p=0.5)
-        self.layer_norm = nn.RMSNorm(config.dim)
-
     def forward(self, states: States, attention_mask: Int[Tensor, "B T"]) -> States:
         batch_length = states.shape[:2]
 
-        states = self.layer_norm(states)
+        normed = self.layer_norm(states)
 
-        q_attentioned: Float[Tensor, "B T T H"] = self._get_q_attentioned(states, attention_mask)
-        kv: Hiddens = self._get_kv(states, attention_mask)
+        q_attentioned: Float[Tensor, "B T T H"] = self._get_q_attentioned(normed, attention_mask)
+        kv: Hiddens = self._get_kv(normed, attention_mask)
 
         loading: Hiddens = torch.einsum("btlh,blhd->bthd", q_attentioned, kv)
         loading_flat: Float[Tensor, "B T H_Dh"] = loading.reshape(*batch_length, self.dim)
 
         attention_output: States = self.O(loading_flat)
-        intermediate: States = states + self.dropout(attention_output)
 
-        return intermediate
+        return attention_output
 
     def _get_q_attentioned(
         self, states: States, attention_mask: Int[Tensor, "B T"]
@@ -128,19 +126,16 @@ class ActivationLayer(nn.Module):
         super().__init__()
         self.config = config
 
+        self.layer_norm = nn.RMSNorm(config.dim)
         self.linear_in = nn.Linear(config.dim, config.hidden_dim)
         self.act_fn = nn.GELU(approximate="tanh")
         self.linear_out = nn.Linear(config.hidden_dim, config.dim)
-        self.layer_norm = nn.RMSNorm(config.dim)
-
-        self.dropout = nn.Dropout(p=0.5)
 
     def forward(self, states: States) -> States:
-        states = self.layer_norm(states)
-        activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(states))
-        lin_output: States = self.dropout(self.linear_out(activated))
+        normed = self.layer_norm(states)
+        activated: Float[Tensor, "B T Da"] = self.act_fn(self.linear_in(normed))
 
-        return states + lin_output
+        return self.linear_out(activated)
 
 
 class AbsoluteBertLayer(nn.Module):
@@ -150,10 +145,20 @@ class AbsoluteBertLayer(nn.Module):
     ) -> None:
         super().__init__()
         self.attention = AbsoluteAttention(config.get_attention_config())
+        self.attention_dropout = nn.Dropout(p=0.5)
+
         self.activation = ActivationLayer(config.get_activation_config())
+        self.activation_dropout = nn.Dropout(p=0.5)
 
     def forward(self, states: States, attention_mask: Int[Tensor, "B T"]) -> States:
-        return self.activation(self.attention(states, attention_mask))
+
+        attention_output = self.attention(states, attention_mask)
+        intermediate: States = states + self.attention_dropout(attention_output)
+
+        activation_output = self.activation(intermediate)
+        layer_output = intermediate + self.activation_dropout(activation_output)
+
+        return layer_output
 
 
 class AbsoluteBert(nn.Module):
