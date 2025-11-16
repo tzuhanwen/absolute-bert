@@ -1,5 +1,16 @@
 record_ordering: newest_first
 records:
+- latest_available_commit: 8aac3b0a27547501ab48ae587f16ad2a2571e2ce
+  latest_site: absolute_bert/model/absolute_bert/models.py
+  notes: "debug: \u767C\u73FE\u96A8\u6A5F\u7684 time angles \u4E26\u4E0D\u80FD\u6709\
+    \u6548\u5730\u7D66\u51FA distance function\uFF0C\u800C\u6BCF\u500B word vector\
+    \ \u53C8\u662F\u56FA\u5B9A\u7684 1_{d_t}\uFF0C\u5617\u8A66\u4FEE\u6539\u524D\u5148\
+    \u5B58 model"
+  registered_commit: 8aac3b0a27547501ab48ae587f16ad2a2571e2ce
+  registered_relic_fingerprint: a5ba322a547f8af24c2c41ce93e48e67681ff6ea
+  registered_site: absolute_bert/model/absolute_bert/models.py
+  relic_version: 1.7b
+  timestamp: '2025-11-16T13:13:37.769669'
 - latest_available_commit: 42335afdadb7f2919b6607074481c771d186fcc3
   latest_site: absolute_bert/model/absolute_bert/models.py
   notes: "debug: \u767C\u73FE\u61C9\u8A72\u662F time angle \u6709\u592A\u5927\u81EA\
