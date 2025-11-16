@@ -35,7 +35,7 @@ class AbsoluteAttention(nn.Module):
 
         self.layer_norm = nn.RMSNorm(config.dim)
 
-        self.time_angles = 10000 ** (-1 / torch.arange(1, config.time_dim + 1))
+        self.time_angles = nn.Parameter(10000 ** (-1 / torch.arange(1, config.time_dim + 1)))
         self.head_time_delta: Float[Tensor, "H"] = nn.Parameter(torch.rand(self.num_heads))
 
         self.Q = nn.Linear(config.dim, config.num_heads * config.hidden_dim, bias=False)
