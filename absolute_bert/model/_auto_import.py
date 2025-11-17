@@ -2,14 +2,15 @@ import pkgutil
 import importlib
 from pathlib import Path
 
-import logging 
+from .registry import lm_registry, lm_config_registry
+
+import logging
 
 logger = logging.getLogger(__name__)
 logger.debug("start to auto import")
 
 _pkg = Path(__file__).parent
 logger.debug(f"{_pkg=}")
-
 
 
 for m in pkgutil.iter_modules([str(_pkg)]):
@@ -21,4 +22,8 @@ for m in pkgutil.iter_modules([str(_pkg)]):
 
     importlib.import_module(f"{__package__}.{name}")
 
-logger.debug("end of auto import")
+logger.debug(
+    "end of auto import, "
+    f"{lm_config_registry._registry.keys()=}, "
+    f"{lm_registry._registry.keys()=}"
+)
