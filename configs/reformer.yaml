@@ -1,0 +1,39 @@
+wandb:
+  entity: "ghuang-nlp"
+  project: "absolute-bert"
+  job_type: "prototype"  # "sweep", "train"
+train:
+  model_type: "roformer"
+  num_epochs: 3
+  max_steps: 30000
+# model_params:
+#   dims: 512
+micro_batch_sizes:
+  train: 48
+  val: 128
+  ir: 32
+optimizer:
+  lr: 1e-5
+scheduler:
+  warm_ratio: 0.07
+  type: "no_op"
+logging:
+  params:
+    every_n_steps: 500
+    rules:
+      -
+        include:
+          - "bias"
+        methods: ["module_norm", "param_dist"]
+      -
+       include: ["*.LayerNorm.weight"]
+       methods: ["param_mean"]
+      -
+        include: ["*.word_embeddings*"]
+        methods: ["norm_dist_along_last_dim"]
+  # train: 
+  #   every_n_effective_steps: 5
+  # val:
+  #   every_n_steps: 500
+  # ir:
+  #   every_n_steps: 2000

@@ -8,8 +8,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.debug("start of model registry")
 
+
 class LanguageModelType(StrEnum):
     ABSOLUTE_BERT = "absolute_bert"
+    ROFORMER = "roformer"
 
 
 lm_registry = Registry[LanguageModelType, type[LanguageModel]]()
@@ -19,6 +21,7 @@ lm_config_registry = Registry[LanguageModelType, type[LanguageModelConfig]]()
 
 def ensure_model_registered():
     from . import _auto_import
+
 
 ensure_model_registered()
 
