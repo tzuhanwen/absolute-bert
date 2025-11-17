@@ -211,11 +211,11 @@ class AbsoluteBertLM(nn.Module):
 
     @property
     def embed(self) -> nn.Embedding:
-        return self.base_model.embedding
+        return self.base_model.embed
 
     @property
     def word_embeddings(self) -> WordEmbeddings:
-        return self.base_model.embedding.weight
+        return self.base_model.embed.weight
 
     @property
     def word_biases(self) -> WordBiases:

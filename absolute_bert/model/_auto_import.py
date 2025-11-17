@@ -1,3 +1,6 @@
+# This module will import modules of the same level of this module,
+# __init__.py file and explicitly import submodules in the file is needed.
+
 import pkgutil
 import importlib
 from pathlib import Path
@@ -14,6 +17,8 @@ logger.debug(f"{_pkg=}")
 
 
 for m in pkgutil.iter_modules([str(_pkg)]):
+    logger.debug(f"found module {m}")
+
     name = m.name
     if name.startswith("_") or name in {"registry.py"}:
         continue

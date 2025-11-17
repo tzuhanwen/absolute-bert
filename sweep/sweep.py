@@ -1,3 +1,9 @@
+from absolute_bert.utils import init_logging
+
+if __name__ == "__main__":
+    init_logging()
+
+# %%
 import logging
 
 import torch
@@ -7,7 +13,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, DataCollatorForLanguageModeling
 
-from absolute_bert.model import lm_registry
+from absolute_bert.model import lm_registry, lm_summary_generator_registry
 from absolute_bert.loss import CrossEntropy
 from absolute_bert.base_types import (
     EncoderInputs,
@@ -17,18 +23,13 @@ from absolute_bert.base_types import (
 from absolute_bert.bi_encoder import EncoderEmbeddingPool, EncoderOutputPool
 from absolute_bert.extractor import ModuleParamStatsExtractor
 from absolute_bert.loggers import WandbLogger
-from absolute_bert.utils import init_logging
 from absolute_bert.sweep import setup
 from absolute_bert.sweep.evaluate import BeirBenchmark
-from absolute_bert.sweep.extractors import get_absolute_bert_semantic_summary
 from absolute_bert.sweep.optimizer import make_adamw
 from absolute_bert.sweep.scheduler import make_scheduler
 from absolute_bert.sweep.train import MultiLossAverager, format_losses
 from absolute_bert.sweep.utils import log_step
 from absolute_bert.tracker import UpdateRatioTracker
-
-if __name__ == "__main__":
-    init_logging()
 
 # logging.getLogger("beir").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -81,7 +82,6 @@ batch = next(iter(train_loader))
 model.forward(EncoderInputs.from_mapping(batch.to(device)))
 logger.info(f"using model `{repr(model)}`")
 
-
 loss_fn = CrossEntropy(model, config.loss)
 optimizer = make_adamw(model, config=config.optimizer)
 update_ratio_tracker = UpdateRatioTracker(model, optimizer)
@@ -105,13 +105,18 @@ logging.info(f"logging following parameter stats on named modules: {repr(logging
 
 wandb_logger = WandbLogger()
 
+summary_generator = None
+summary_generator_type = lm_summary_generator_registry.get(config.train.model_type)
+if summary_generator_type is not None:
+    summary_generator = summary_generator_type(model, tokenizer)
+
 
 def run_benchmarks_and_log(tag: str, epoch_num: int | None = None):
     with log_step(step=global_step, tag=tag):
-        output_metrics = benchmark.run(model_output_encoder, config.micro_batch_sizes.ir)
         static_embeddings_metrics = benchmark.run(
             static_embedding_encoder, config.micro_batch_sizes.ir
         )
+        output_metrics = benchmark.run(model_output_encoder, config.micro_batch_sizes.ir)
         metrics = [
             ("model_output", output_metrics),
             ("static_embeddings", static_embeddings_metrics),
@@ -130,12 +135,13 @@ def log_params():
 
 def log_semantic_summary():
     with log_step(step=global_step, tag="semantic_summary"):
-        summary = get_absolute_bert_semantic_summary(model, tokenizer)
-        wandb_logger.dump_strings(
-            {f"{layer_name}.txt": semantic for layer_name, semantic in summary.items()}, 
-            "semantic_summary", 
-            global_step
-        )
+        if  summary_generator is not None:
+            summary = summary_generator()
+            wandb_logger.dump_strings(
+                {f"{layer_name}.txt": semantic for layer_name, semantic in summary.items()}, 
+                "semantic_summary", 
+                global_step
+            )
 
 
 # %% train start
