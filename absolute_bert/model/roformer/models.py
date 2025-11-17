@@ -7,27 +7,48 @@ from ..registry import LanguageModelType, lm_registry
 from .config import RoformerConfig
 
 
+class RoformerWrapper(nn.Module):
+
+    def __init__(
+        self,
+        config: RoformerConfig,
+    ) -> None:
+        super().__init__()
+        self.config = config
+
+        transformer_config = RoFormerConfig(**config.to_transformer_config_dict())
+        self.model = RoFormerModel(transformer_config)
+
+    def forward(self, inputs: EncoderInputs) -> States:
+        states = self.model(
+            input_ids=inputs.input_ids, attention_mask=inputs.attention_mask
+        ).last_hidden_state
+
+        return states
+
+    @property
+    def embed(self) -> nn.Embedding:
+        return self.model.embeddings.word_embeddings
+
+
 @lm_registry.register(LanguageModelType.ROFORMER)
 class RoformerLM(nn.Module):
     def __init__(self, config: RoformerConfig) -> None:
         super().__init__()
-        transformer_config = RoFormerConfig(**config.to_transformer_config_dict())
-        self.base_model = RoFormerModel(transformer_config)
+        self.base_model = RoformerWrapper(config)
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
 
     def forward(self, inputs: EncoderInputs) -> tuple[States, Labels | None]:
-        states = self.base_model(
-            input_ids=inputs.input_ids, attention_mask=inputs.attention_mask
-        ).last_hidden_state
+        states = self.base_model(inputs)
         return states, inputs.labels
 
     @property
     def embed(self) -> nn.Embedding:
-        return self.base_model.embeddings.word_embeddings
+        return self.base_model.embed
 
     @property
     def word_embeddings(self) -> WordEmbeddings:
-        return self.base_model.embeddings.word_embeddings.weight
+        return self.embed.weight
 
     @property
     def word_biases(self) -> WordBiases:

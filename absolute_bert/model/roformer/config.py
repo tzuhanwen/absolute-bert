@@ -18,6 +18,7 @@ class RoformerConfig(LanguageModelConfig):
     num_heads: int = 8
     activation_dim: int = 3 * 512
     depth: int = 8
+    max_position_embeddings: int = 3072
 
     def to_transformer_config_dict(self) -> dict[str, Any]:
         return {
@@ -26,4 +27,5 @@ class RoformerConfig(LanguageModelConfig):
             "num_hidden_layers": self.depth,
             "num_attention_heads": self.num_heads,
             "intermediate_size": self.activation_dim,
+            "max_position_embeddings": self.max_position_embeddings,
         }
